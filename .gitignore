@@ -1,6 +1,9 @@
 # macOS
 .DS_Store
 
+# JetBrains IDE settings
+.idea/
+
 # Xcode user settings and build products
 xcuserdata/
 *.xcuserstate
