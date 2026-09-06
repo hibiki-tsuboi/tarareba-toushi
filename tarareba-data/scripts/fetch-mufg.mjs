@@ -176,7 +176,7 @@ export async function fetchBytes(url, contentType, fetcher = fetch) {
 
 export async function updateFromMufg(root, fetcher = fetch) {
     const histories = [];
-    // Four serial requests per manual update; no background polling of the provider.
+    // Four serial requests per invocation, including the daily workflow.
     for (const fund of funds) {
         const csv = await fetchBytes(csvURL(fund), 'text/csv', fetcher);
         const history = parseMufgCSV(new TextDecoder('shift_jis', { fatal: true }).decode(csv), fund);

@@ -10,11 +10,10 @@ export function day(value) {
     return date;
 }
 
-export function validate(snapshot, mode = 'sample') {
+export function validateManifest(m, mode = 'sample') {
     assert(['sample', 'live'].includes(mode));
     const isSample = mode === 'sample';
     const expectedIDs = isSample ? ids : liveIDs;
-    const m = snapshot.manifest;
     assert.equal(m.schemaVersion, 1);
     assert.equal(m.isSample, isSample);
     assert.match(m.datasetVersion, /^[a-z0-9][a-z0-9-]{0,63}$/);
@@ -24,9 +23,6 @@ export function validate(snapshot, mode = 'sample') {
     assert.equal(new Date(m.publishedAt).toISOString().replace('.000Z', 'Z'), m.publishedAt);
     assert.equal(m.funds.length, 2);
     assert.deepEqual(m.funds.map(f => f.id).sort(), [...expectedIDs].sort());
-    assert.equal(snapshot.series.length, 2);
-    assert.deepEqual(snapshot.series.map(s => s.fundId).sort(), [...expectedIDs].sort());
-    let common;
     for (const f of m.funds) {
         assert.equal(f.currency, 'JPY');
         assert(f.displayName && f.displayName.length <= 80);
@@ -34,6 +30,18 @@ export function validate(snapshot, mode = 'sample') {
         assert.equal(f.path, `funds/${f.id}.${m.datasetVersion}.json`);
         day(f.firstDate); day(f.lastDate);
         assert(f.firstDate <= f.lastDate);
+    }
+    return m;
+}
+
+export function validate(snapshot, mode = 'sample') {
+    const m = validateManifest(snapshot.manifest, mode);
+    const isSample = mode === 'sample';
+    const expectedIDs = isSample ? ids : liveIDs;
+    assert.equal(snapshot.series.length, 2);
+    assert.deepEqual(snapshot.series.map(s => s.fundId).sort(), [...expectedIDs].sort());
+    let common;
+    for (const f of m.funds) {
         const s = snapshot.series.find(s => s.fundId === f.id);
         assert.equal(s.schemaVersion, 1);
         assert.equal(s.isSample, isSample);

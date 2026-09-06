@@ -24,8 +24,10 @@ ios/TararebaToushi/
 ios/TararebaToushiTests/    計算・データ・通信・保存の自動テスト
 ios/TararebaToushiUITests/  初回取得・再試行・オフライン利用・画面操作
 tarareba-data/             公式CSV・API取得、生成・検証スクリプトと配信用JSON
+.github/workflows/        GitHub Actionsによる日次更新
 docs/data-format.md        JSONの契約と計算ルール
 docs/mufg-data.md          取得元・商品の識別・系列の意味
+docs/data-updates.md       日次更新の有効化と運用手順
 ```
 
 ルートの既存 `AGENTS.md` は変更していません。その中のXcodeコマンドは `ios/` を作業ディレクトリにすると使用できます。
@@ -80,11 +82,13 @@ npm --prefix tarareba-data run verify:app -- \
 
 2商品すべてを検証し、Application Supportの単一スナップショットをatomic書き込みしてから画面を切り替えます。初回取得に失敗した場合は比較結果を表示せず、「データを更新」で再試行できます。取得後の更新失敗では保存済みデータを保持します。ファイル名は配信URL・モード・スキーマのハッシュ、内部には版を含みます。配信元やモードの異なるキャッシュは混在しません。取得日時と更新確認成功日時を別に保持します。以前の開発版で同梱データから作ったキャッシュは採用せず、初回と同じようにダウンロードします。
 
-配信側の更新は `tarareba-data/` で `npm run fetch:mufg`。公式CSVの分配金再投資系列を採用し、最新日と基準価額を公式APIと照合して、`public/live/` の配信用JSONを生成します。サンプル生成も含め、iOS側にはデータファイルを書き込みません。取得・形式・照合のエラーでは既存データを保持します。定期収集は設定していないため、アプリの更新ボタンだけでは配信元の履歴は新しくなりません。
+配信側の更新は `tarareba-data/` で `npm run fetch:mufg`。公式CSVの分配金再投資系列を採用し、最新日と基準価額を公式APIと照合して、`public/live/` の配信用JSONを生成します。サンプル生成も含め、iOS側にはデータファイルを書き込みません。取得・形式・照合のエラーでは既存データを保持します。
+
+GitHub Actionsの日次更新を用意しています。毎朝7:17（日本時間）に取得・検証し、公開JSONと違う場合だけCloudflareへ公開します。生成データを先にGitに保存し、公開失敗後も次回に再試行できます。有効化にはワークフローのGitHubへの反映とCloudflare用のActions secrets登録が必要です。手順は [日次更新](docs/data-updates.md) を参照してください。アプリの更新確認は、配信側の取得・公開処理とは別です。
 
 ## 公開と残る確認
 
-2026-09-06にCloudflareへ公開しました。[実データの一覧](https://tarareba-data.hibiki-apps.workers.dev/live/manifest.json) と2商品の履歴がHTTP 200で取得でき、内容とキャッシュ設定も確認済みです。アプリの「データを更新」で公開版を確認できます。実機確認と定期更新の自動化は別工程です。
+2026-09-06にCloudflareへ公開しました。[実データの一覧](https://tarareba-data.hibiki-apps.workers.dev/live/manifest.json) と2商品の履歴がHTTP 200で取得でき、内容とキャッシュ設定も確認済みです。アプリの「データを更新」で公開版を確認できます。実機確認と、日次更新の認証設定・GitHub上での初回実行が残っています。
 
 更新・公開手順は [配信用README](tarareba-data/README.md)、取得元と系列の説明は [公式データの取り込み](docs/mufg-data.md) を参照してください。
 

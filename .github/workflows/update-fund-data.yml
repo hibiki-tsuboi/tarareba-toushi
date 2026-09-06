@@ -1,0 +1,106 @@
+name: Update fund data
+
+on:
+  schedule:
+    # 07:17 JST every day. No new edition is created when the source is unchanged.
+    - cron: '17 22 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tarareba-data-publication
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.repository == 'hibiki-tsuboi/tarareba-toushi' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: bash
+        working-directory: tarareba-data
+    steps:
+      - name: Check out the latest default branch, including previous data editions
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
+      - name: Check deployment credentials
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          : "${CLOUDFLARE_ACCOUNT_ID:?Set CLOUDFLARE_ACCOUNT_ID in repository Actions secrets}"
+          : "${CLOUDFLARE_API_TOKEN:?Set CLOUDFLARE_API_TOKEN in repository Actions secrets}"
+
+      - name: Install dependencies and run data tests
+        run: |
+          npm ci
+          npm test
+
+      - name: Fetch and validate the official data
+        run: |
+          for attempt in 1 2 3; do
+            if npm run fetch:mufg; then
+              npm run validate
+              exit 0
+            fi
+            if [[ "$attempt" -lt 3 ]]; then sleep 60; fi
+          done
+          exit 1
+
+      - name: Compare with the actual published data
+        id: publication
+        run: npm run publish:status
+
+      - name: Save validated editions before publishing
+        env:
+          DATA_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          # Commit only generated data; never overwrite concurrent branch updates.
+          git diff --cached --quiet
+          git add -- public/live
+          if ! git diff --cached --quiet; then
+            git -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              commit -m '📈 公式データの日次更新'
+            git push origin "HEAD:refs/heads/$DATA_BRANCH"
+          fi
+
+      - name: Publish changed data to Cloudflare
+        if: steps.publication.outputs.needs_deploy == 'true'
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npm run deploy
+
+      - name: Verify the published manifest and both histories
+        if: steps.publication.outputs.needs_deploy == 'true'
+        run: |
+          for attempt in 1 2 3 4 5; do
+            if npm run publish:verify; then exit 0; fi
+            if [[ "$attempt" -lt 5 ]]; then sleep 15; fi
+          done
+          exit 1
+
+      - name: Record failure and retry instructions
+        if: failure()
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<'EOF'
+          ## 更新に失敗しました
+
+          失敗したステップを確認し、問題を解消してから **Run workflow** を実行してください。
+          取得・検証・Gitへの保存に失敗した場合は、公開処理へ進みません。
+          公開に失敗した場合も、次回は実際の公開版と比較して再試行します。
+          EOF

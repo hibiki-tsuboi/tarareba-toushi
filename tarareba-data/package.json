@@ -6,6 +6,8 @@
   "scripts": {
     "generate": "node scripts/generate-sample.mjs",
     "fetch:mufg": "node scripts/fetch-mufg.mjs",
+    "publish:status": "node scripts/check-published.mjs status",
+    "publish:verify": "node scripts/check-published.mjs verify",
     "validate": "node scripts/validate.mjs",
     "verify:app": "node scripts/verify-app-data.mjs",
     "test": "node --test tests/*.test.mjs",
