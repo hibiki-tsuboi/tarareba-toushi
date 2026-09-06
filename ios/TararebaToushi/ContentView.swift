@@ -10,9 +10,8 @@ struct ContentView: View {
 
     private var automaticallyRefreshes: Bool {
         #if DEBUG
-            !ProcessInfo.processInfo.arguments.contains("--offline-sample")
-                && !ProcessInfo.processInfo.arguments.contains("--offline-live")
-                && ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil
+            ProcessInfo.processInfo.arguments.contains("--ui-testing")
+                || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil
         #else
             true
         #endif
@@ -32,12 +31,16 @@ struct ContentView: View {
                     }
                     if let result = model.result {
                         results(result)
-                    } else if repository.isLoading {
-                        ProgressView("データを読み込んでいます").frame(maxWidth: .infinity)
+                    } else if repository.isLoading || repository.isRefreshing {
+                        ProgressView("比較データを取得しています")
+                            .frame(maxWidth: .infinity)
+                            .accessibilityIdentifier("download-progress")
                     } else if repository.dataset == nil {
                         ContentUnavailableView(
-                            "データを読み込めませんでした", systemImage: "chart.xyaxis.line",
-                            description: Text("下の「データを更新」から再試行できます。"))
+                            repository.message == nil ? "比較データを取得します" : "比較データを取得できませんでした",
+                            systemImage: "icloud.and.arrow.down",
+                            description: Text("初回のデータ取得にはインターネット接続が必要です。接続を確認し、下の「データを更新」から再試行してください。"))
+                            .accessibilityIdentifier("initial-data-unavailable")
                     }
                     dataFooter
                 }
@@ -172,11 +175,11 @@ struct ContentView: View {
 
     private var dataFooter: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label(repository.statusLabel, systemImage: repository.origin == .bundled ? "iphone" : "checkmark.icloud")
+            Label(repository.statusLabel, systemImage: repository.dataset == nil ? "icloud.and.arrow.down" : "checkmark.icloud")
                 .font(.subheadline.weight(.medium))
             if let message = repository.message {
                 Text(message).font(.caption).foregroundStyle(.secondary).accessibilityIdentifier("update-message")
-            } else if repository.isStale {
+            } else if repository.dataset != nil, repository.isStale {
                 Text("更新確認が必要です。表示中のデータで比較できます。")
                     .font(.caption).foregroundStyle(.secondary)
             }

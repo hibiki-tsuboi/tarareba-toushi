@@ -20,7 +20,7 @@ struct DataInformationView: View {
                     row("読み込み元", repository.statusLabel)
                     row("版", repository.dataset?.snapshot.manifest.datasetVersion ?? "—")
                     row("共通のデータ基準日", repository.dataset?.endDate.label ?? "—")
-                    row("端末での最終取得日時", timestamp(repository.fetchedAt, empty: "未取得（同梱データを使用）"))
+                    row("端末での最終取得日時", timestamp(repository.fetchedAt, empty: "未取得"))
                     row("更新確認成功日時", timestamp(repository.checkedAt, empty: "未確認"))
                     if let dataset = repository.dataset {
                         row("配信データの作成日時", dataset.snapshot.manifest.publishedAt)
@@ -39,6 +39,7 @@ struct DataInformationView: View {
                 }
                 Section("配信と更新") {
                     Text(repository.configuration.dataBaseURL).font(.footnote).textSelection(.enabled)
+                    Text("初回起動時に比較データを取得します。初回はインターネット接続が必要です。取得後は端末に保存し、オフラインでも前回のデータで比較できます。")
                     Text("起動・復帰時に、前回の確認成功から6時間以上経過していれば更新を確認します。手動更新もできます。通信に失敗した場合は正常な保存データを保持します。")
                     Text("データ基準日は、2商品の観測値が揃う最後の日です。今日のリアルタイム価格やファイルの公開日時ではありません。")
                 }

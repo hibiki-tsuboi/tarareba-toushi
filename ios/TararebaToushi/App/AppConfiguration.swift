@@ -11,7 +11,6 @@ nonisolated enum DatasetMode: String, Codable, Sendable {
     }
 
     var label: String { self == .sample ? "サンプル" : "実データ" }
-    var bundleName: String { self == .sample ? "BundledSample" : "BundledLive" }
 }
 
 nonisolated struct AppConfiguration: Sendable {

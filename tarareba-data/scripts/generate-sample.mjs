@@ -64,13 +64,10 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     const snapshot = generate(options);
     const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
     const target = resolve(root, 'public/sample');
-    const bundle = resolve(root, '../ios/TararebaToushi/Resources/BundledSample.json');
     await mkdir(resolve(target, 'funds'), { recursive: true });
     for (const f of snapshot.manifest.funds) {
         await immutableWrite(resolve(target, f.path), snapshot.series.find(s => s.fundId === f.id));
     }
     await writeFile(resolve(target, 'manifest.json'), json(snapshot.manifest));
-    await mkdir(dirname(bundle), { recursive: true });
-    await writeFile(bundle, json(snapshot));
-    console.log(`Generated ${snapshot.manifest.datasetVersion}: ${snapshot.series[0].observations.length} observations per fund; public + bundle.`);
+    console.log(`Generated ${snapshot.manifest.datasetVersion}: ${snapshot.series[0].observations.length} observations per fund; public only.`);
 }

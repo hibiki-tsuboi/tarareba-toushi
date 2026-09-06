@@ -7,57 +7,51 @@ final class FundRepository {
     private(set) var isLoading = false
     private(set) var isRefreshing = false
     private(set) var message: String?
-    private(set) var origin: SnapshotOrigin = .bundled
+    private(set) var origin: SnapshotOrigin = .remote
     private(set) var fetchedAt: Date?
     private(set) var checkedAt: Date?
     let configuration: AppConfiguration
     @ObservationIgnored private let remote: RemoteDataSource
     @ObservationIgnored private let store: any SnapshotStore
-    @ObservationIgnored private let bundled: @Sendable () async throws -> ValidatedDataset
     @ObservationIgnored private let now: @Sendable () -> Date
     @ObservationIgnored private var started = false
 
     init(
         configuration: AppConfiguration, transport: any JSONTransport,
-        store: any SnapshotStore, bundled: @escaping @Sendable () async throws -> ValidatedDataset,
+        store: any SnapshotStore,
         now: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.configuration = configuration
         self.remote = RemoteDataSource(configuration: configuration, transport: transport)
         self.store = store
-        self.bundled = bundled
         self.now = now
     }
 
     static func makeDefault() -> FundRepository {
         var configuration = AppConfiguration()
-        #if DEBUG
-            if ProcessInfo.processInfo.arguments.contains("--offline-sample") {
-                configuration.mode = .sample
-            }
-        #endif
         let directory = URL.applicationSupportDirectory.appendingPathComponent("FundSnapshots", isDirectory: true)
-        let source = BundledDatasetSource(mode: configuration.mode)
         #if DEBUG
             if ProcessInfo.processInfo.arguments.contains("--ui-testing") {
-                let testDirectory = URL.temporaryDirectory.appendingPathComponent(
-                    "UITestSnapshots-\(UUID().uuidString)")
+                let environment = ProcessInfo.processInfo.environment
+                if environment["TARAREBA_TEST_MODE"] == "sample" { configuration.mode = .sample }
+                let session = environment["TARAREBA_TEST_SESSION"].flatMap(UUID.init(uuidString:)) ?? UUID()
+                let testDirectory = directory.appendingPathComponent("UITests/\(session.uuidString)")
+                let transport: any JSONTransport =
+                    environment["TARAREBA_TEST_RESPONSES"] != nil || environment["TARAREBA_TEST_OFFLINE"] == "1"
+                    ? UITestTransport(environment: environment) : URLSessionTransport()
                 return FundRepository(
-                    configuration: configuration, transport: UITestOfflineTransport(),
-                    store: LocalSnapshotStore(directory: testDirectory, configuration: configuration),
-                    bundled: { try await source.load() })
+                    configuration: configuration, transport: transport,
+                    store: LocalSnapshotStore(directory: testDirectory, configuration: configuration))
             }
         #endif
         return FundRepository(
             configuration: configuration, transport: URLSessionTransport(),
-            store: LocalSnapshotStore(directory: directory, configuration: configuration),
-            bundled: { try await source.load() })
+            store: LocalSnapshotStore(directory: directory, configuration: configuration))
     }
 
     var statusLabel: String {
         guard dataset != nil else { return "データ未取得" }
         let kind = configuration.mode == .sample ? "サンプル" : "実データ"
-        if origin == .bundled { return "同梱\(kind)を表示中" }
         return "取得済みの\(kind)を表示中"
     }
 
@@ -71,7 +65,7 @@ final class FundRepository {
         started = true
         isLoading = true
         do {
-            if let cached = try await store.load() {
+            if let cached = try await store.load(), cached.origin == .remote, cached.fetchedAt != nil {
                 let mode = configuration.mode
                 dataset =
                     try await Task.detached {
@@ -84,15 +78,6 @@ final class FundRepository {
             }
         } catch {
             message = "保存データを読み込めませんでした。利用できるデータを確認します。"
-        }
-        if dataset == nil {
-            do {
-                let candidate = try await bundled()
-                guard candidate.snapshot.manifest.isSample == (configuration.mode == .sample) else {
-                    throw DataIssue("同梱データのモードが一致しません。")
-                }
-                dataset = candidate
-            } catch { message = error.localizedDescription }
         }
         isLoading = false
         if refresh { await self.refresh() }
@@ -135,6 +120,17 @@ final class FundRepository {
             message = nil
         } catch is CancellationError {
             message = "更新を中断しました。もう一度お試しください。"
+        } catch let error as URLError {
+            switch error.code {
+            case .notConnectedToInternet, .networkConnectionLost:
+                message = "インターネットに接続できません。接続を確認して再試行してください。"
+            case .timedOut:
+                message = "通信に時間がかかっています。時間をおいて再試行してください。"
+            case .cancelled:
+                message = "更新を中断しました。もう一度お試しください。"
+            default:
+                message = "データを取得できませんでした。接続を確認して再試行してください。"
+            }
         } catch {
             message = error.localizedDescription
         }
@@ -142,9 +138,29 @@ final class FundRepository {
 }
 
 #if DEBUG
-    nonisolated private struct UITestOfflineTransport: JSONTransport {
+    // UI tests supply small fictional responses at launch. No history is compiled into the app.
+    private actor UITestTransport: JSONTransport {
+        private let responses: [String: String]
+        private let offline: Bool
+        private let failFirst: Bool
+        private let failAfter: Int?
+        private var requests = 0
+
+        init(environment: [String: String]) {
+            let data = Data((environment["TARAREBA_TEST_RESPONSES"] ?? "{}").utf8)
+            responses = (try? JSONDecoder().decode([String: String].self, from: data)) ?? [:]
+            offline = environment["TARAREBA_TEST_OFFLINE"] == "1"
+            failFirst = environment["TARAREBA_TEST_FAIL_FIRST"] == "1"
+            failAfter = environment["TARAREBA_TEST_FAIL_AFTER"].flatMap(Int.init)
+        }
+
         func fetch(_ url: URL) async throws -> Data {
-            throw DataIssue("配信ファイルがまだ配置されていません（404）。保存済みのデータで引き続き比較できます。")
+            requests += 1
+            try await Task.sleep(for: .milliseconds(150))
+            if offline || (failFirst && requests == 1) { throw URLError(.notConnectedToInternet) }
+            if let failAfter, requests > failAfter { throw DataIssue("テスト用の取得失敗（404）。") }
+            guard let response = responses[url.path] else { throw DataIssue("テスト用の取得失敗（404）。") }
+            return Data(response.utf8)
         }
     }
 #endif

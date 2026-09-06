@@ -10,7 +10,7 @@ Xcode 26.6 / Swift 6.3.3で開発。Swift 5言語モード、最低対応iOS 26.
 open ios/TararebaToushi.xcodeproj
 ```
 
-`TararebaToushi` スキームでiPhoneシミュレーターを選び、Cmd+R。取得済みの実データを同梱しているため、初回オフラインや配信先未配置でも比較できます。共通の比較開始日は2018-10-31以降です。
+`TararebaToushi` スキームでiPhoneシミュレーターを選び、Cmd+R。価格データは同梱していないため、初回はインターネット接続が必要です。Cloudflareから取得したデータを端末に保存し、以後はオフラインでも比較できます。共通の比較開始日は2018-10-31以降です。
 
 ## 構成
 
@@ -19,11 +19,10 @@ ios/TararebaToushi/
   App/                 配信URL・モード・更新間隔・金額上限
   Models/              JSONの型
   Domain/              厳格な日付・共通日解決・Decimalによる計算
-  Data/                HTTP取得・検証・同梱データ・キャッシュ・更新
+  Data/                HTTP取得・検証・キャッシュ・更新
   Features/            比較カード・グラフ・説明画面
-  Resources/           取得済み実データと開発用サンプル
 ios/TararebaToushiTests/    計算・データ・通信・保存の自動テスト
-ios/TararebaToushiUITests/  オフライン起動・入力・期間・説明画面
+ios/TararebaToushiUITests/  初回取得・再試行・オフライン利用・画面操作
 tarareba-data/             公式CSV・API取得、生成・検証スクリプトと配信用JSON
 docs/data-format.md        JSONの契約と計算ルール
 docs/mufg-data.md          取得元・商品の識別・系列の意味
@@ -51,7 +50,20 @@ npm run validate
 npm test
 ```
 
-Swift Testingで固定フィクスチャ、URLProtocolでHTTP応答、差し替え可能な保存先・時計・通信で更新を検証します。Debugの `--offline-sample` はサンプルを、`--offline-live` は同梱実データを使い、自動通信を止めます。UIテストは `--ui-testing` で通信とキャッシュを隔離します。Xcodeの共有スキームに両テストターゲットを登録済みです。
+Swift Testingで固定フィクスチャ、URLProtocolでHTTP応答、差し替え可能な保存先・時計・通信で更新を検証します。UIテストはDebugの `--ui-testing` を使い、テストランナーから架空の応答を渡します。保存先と入力設定はテスト単位で隔離し、テスト用の価格データはアプリ本体に含めません。Xcodeの共有スキームに両テストターゲットを登録済みです。
+
+Releaseの確認には新しいDerivedDataディレクトリを指定し、過去のビルドに残ったリソースの混入を避けます。リポジトリルートで次を実行してください。
+
+```sh
+xcodebuild -project ios/TararebaToushi.xcodeproj \
+  -scheme TararebaToushi -configuration Release \
+  -destination 'generic/platform=iOS Simulator' \
+  -derivedDataPath /tmp/TararebaReleaseVerification build
+npm --prefix tarareba-data run verify:app -- \
+  /tmp/TararebaReleaseVerification/Build/Products/Release-iphonesimulator/TararebaToushi.app
+```
+
+`verify:app` は完成した `.app` 内のJSON・JSONC・CSVを検出すると失敗します。
 
 ## 操作と採用した判断
 
@@ -66,12 +78,14 @@ Swift Testingで固定フィクスチャ、URLProtocolでHTTP応答、差し替�
 
 `App/AppConfiguration.swift` に配信元とモードを集約しています。通常は `live/manifest.json`、開発用サンプルは `sample/manifest.json` です。起動・復帰時、前回の確認成功から6時間以上経過していれば確認し、手動更新は間隔を無視します。同じ版では履歴を再取得しません。
 
-2商品すべてを検証し、Application Supportの単一スナップショットをatomic書き込みしてから画面を切り替えます。ファイル名は配信URL・モード・スキーマのハッシュ、内部には版を含みます。別の配信元や実データモードのキャッシュは混在しません。取得日時と更新確認成功日時を別に保持し、同梱版とリモートmanifestが一致しただけの場合は「取得済み」と偽りません。
+2商品すべてを検証し、Application Supportの単一スナップショットをatomic書き込みしてから画面を切り替えます。初回取得に失敗した場合は比較結果を表示せず、「データを更新」で再試行できます。取得後の更新失敗では保存済みデータを保持します。ファイル名は配信URL・モード・スキーマのハッシュ、内部には版を含みます。配信元やモードの異なるキャッシュは混在しません。取得日時と更新確認成功日時を別に保持します。以前の開発版で同梱データから作ったキャッシュは採用せず、初回と同じようにダウンロードします。
 
-配信側の更新は `tarareba-data/` で `npm run fetch:mufg`。公式CSVの分配金再投資系列を採用し、最新日と基準価額を公式APIと照合して、配信用JSONと同梱実データを一緒に生成します。取得・形式・照合のエラーでは既存データを保持します。定期収集は設定していないため、アプリの更新ボタンだけでは配信元の履歴は新しくなりません。
+配信側の更新は `tarareba-data/` で `npm run fetch:mufg`。公式CSVの分配金再投資系列を採用し、最新日と基準価額を公式APIと照合して、`public/live/` の配信用JSONを生成します。サンプル生成も含め、iOS側にはデータファイルを書き込みません。取得・形式・照合のエラーでは既存データを保持します。定期収集は設定していないため、アプリの更新ボタンだけでは配信元の履歴は新しくなりません。
 
 ## 公開と残る確認
 
-実データを取得してローカルで利用できる状態です。Cloudflareへの公開と実機確認は別工程です。更新・公開手順は [配信用README](tarareba-data/README.md)、取得元と系列の説明は [公式データの取り込み](docs/mufg-data.md) を参照してください。
+2026-09-06にCloudflareへ公開しました。[実データの一覧](https://tarareba-data.hibiki-apps.workers.dev/live/manifest.json) と2商品の履歴がHTTP 200で取得でき、内容とキャッシュ設定も確認済みです。アプリの「データを更新」で公開版を確認できます。実機確認と定期更新の自動化は別工程です。
+
+更新・公開手順は [配信用README](tarareba-data/README.md)、取得元と系列の説明は [公式データの取り込み](docs/mufg-data.md) を参照してください。
 
 検証結果と手動確認項目は [検証メモ](docs/validation.md) に記録します。

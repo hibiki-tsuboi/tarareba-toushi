@@ -1,9 +1,8 @@
 import XCTest
 
 final class ComparisonUITests: XCTestCase {
-    @MainActor func testLiveComparisonAndAttributionOffline() {
-        let app = XCUIApplication()
-        app.launchArguments = ["--offline-live", "--ui-testing"]
+    @MainActor func testDownloadedComparisonAndAttribution() {
+        let app = UITestFixtures.app(mode: "live")
         app.launchEnvironment["TARAREBA_TEST_DATE"] = "2025-01-01"
         app.launchEnvironment["TARAREBA_TEST_AMOUNT"] = "1,000,000"
         app.launch()
@@ -34,9 +33,8 @@ final class ComparisonUITests: XCTestCase {
         add(chart)
     }
 
-    @MainActor func testOfflineComparisonAndInvalidAmount() throws {
-        let app = XCUIApplication()
-        app.launchArguments = ["--offline-sample", "--ui-testing"]
+    @MainActor func testDownloadedComparisonAndInvalidAmount() throws {
+        let app = UITestFixtures.app()
         app.launch()
         let amount = app.textFields["investment-amount"]
         XCTAssertTrue(amount.waitForExistence(timeout: 10))
@@ -71,8 +69,8 @@ final class ComparisonUITests: XCTestCase {
     }
 
     @MainActor func testSinglePointChartAndUpdateFailure() throws {
-        let app = XCUIApplication()
-        app.launchArguments = ["--offline-sample", "--ui-testing"]
+        let app = UITestFixtures.app()
+        app.launchEnvironment["TARAREBA_TEST_FAIL_AFTER"] = "3"
         app.launchEnvironment["TARAREBA_TEST_DATE"] = "2026-09-04"
         app.launch()
         XCTAssertTrue(app.textFields["investment-amount"].waitForExistence(timeout: 10))
@@ -98,9 +96,9 @@ final class ComparisonUITests: XCTestCase {
     }
 
     @MainActor func testLargeTextLayout() {
-        let app = XCUIApplication()
-        app.launchArguments = [
-            "--offline-sample", "--ui-testing", "-UIPreferredContentSizeCategoryName",
+        let app = UITestFixtures.app()
+        app.launchArguments += [
+            "-UIPreferredContentSizeCategoryName",
             "UICTContentSizeCategoryAccessibilityXXXL",
         ]
         app.launch()
@@ -117,8 +115,7 @@ final class ComparisonUITests: XCTestCase {
     }
 
     @MainActor func testLossScenarioAndChartSelection() {
-        let app = XCUIApplication()
-        app.launchArguments = ["--offline-sample", "--ui-testing"]
+        let app = UITestFixtures.app()
         app.launchEnvironment["TARAREBA_TEST_DATE"] = "2025-08-13"
         app.launch()
         XCTAssertTrue(app.textFields["investment-amount"].waitForExistence(timeout: 10))
@@ -139,5 +136,34 @@ final class ComparisonUITests: XCTestCase {
         chart.name = "selected-date-chart"
         chart.lifetime = .keepAlways
         add(chart)
+    }
+
+    @MainActor func testFirstLaunchOfflineHasNoResultsAndRetryWorks() {
+        let app = UITestFixtures.app(mode: "live")
+        app.launchEnvironment["TARAREBA_TEST_FAIL_FIRST"] = "1"
+        app.launch()
+        XCTAssertTrue(app.staticTexts["比較データを取得できませんでした"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.staticTexts["valuation-all-country"].exists)
+        XCTAssertFalse(app.staticTexts["comparison-difference"].exists)
+        let empty = XCTAttachment(screenshot: app.screenshot())
+        empty.name = "first-launch-no-data"
+        empty.lifetime = .keepAlways
+        add(empty)
+        app.swipeUp()
+        XCTAssertEqual(app.staticTexts["update-message"].label, "インターネットに接続できません。接続を確認して再試行してください。")
+        app.buttons["refresh-data"].tap()
+        XCTAssertTrue(app.staticTexts["valuation-all-country"].waitForExistence(timeout: 10))
+    }
+
+    @MainActor func testDownloadedCacheWorksAfterOfflineRelaunch() {
+        let app = UITestFixtures.app(mode: "live")
+        app.launch()
+        XCTAssertTrue(app.staticTexts["valuation-all-country"].waitForExistence(timeout: 10))
+        let value = app.staticTexts["valuation-all-country"].label
+        app.terminate()
+        app.launchEnvironment["TARAREBA_TEST_OFFLINE"] = "1"
+        app.launch()
+        XCTAssertTrue(app.staticTexts["valuation-all-country"].waitForExistence(timeout: 10))
+        XCTAssertEqual(app.staticTexts["valuation-all-country"].label, value)
     }
 }

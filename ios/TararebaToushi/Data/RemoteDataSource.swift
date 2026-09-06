@@ -34,7 +34,7 @@ nonisolated struct URLSessionTransport: JSONTransport {
             throw DataIssue("配信先から正しい応答を取得できませんでした。")
         }
         if http.statusCode == 404 {
-            throw DataIssue("配信ファイルがまだ配置されていません（404）。保存済みのデータで引き続き比較できます。")
+            throw DataIssue("比較データが見つかりませんでした（404）。時間をおいて再試行してください。")
         }
         guard http.statusCode == 200 else {
             throw DataIssue("データを更新できませんでした（HTTP \(http.statusCode)）。")
@@ -59,7 +59,7 @@ nonisolated struct RemoteDataSource: Sendable {
         let data = try await transport.fetch(url)
         guard data.count <= AppConfiguration.maximumResponseBytes else { throw DataIssue("データが大きすぎます。") }
         do { return try JSONDecoder().decode(type, from: data) } catch {
-            throw DataIssue("JSONデータを読み取れませんでした。以前のデータを保持しています。")
+            throw DataIssue("取得したデータを読み取れませんでした。時間をおいて再試行してください。")
         }
     }
 

@@ -9,9 +9,16 @@ final class ComparisonModel {
     private(set) var inputError: String?
     @ObservationIgnored private let defaults: UserDefaults
 
-    init(defaults: UserDefaults = .standard) {
-        self.defaults = defaults
-        let saved = defaults.data(forKey: "comparison.input.v1")
+    init(defaults: UserDefaults? = nil) {
+        var preferences = defaults ?? .standard
+        #if DEBUG
+            if defaults == nil, ProcessInfo.processInfo.arguments.contains("--ui-testing") {
+                let session = ProcessInfo.processInfo.environment["TARAREBA_TEST_SESSION"] ?? UUID().uuidString
+                preferences = UserDefaults(suiteName: "UITests.\(session)") ?? preferences
+            }
+        #endif
+        self.defaults = preferences
+        let saved = preferences.data(forKey: "comparison.input.v1")
             .flatMap { try? JSONDecoder().decode(SimulationInput.self, from: $0) }
         let amount = saved?.amount ?? AppConfiguration.initialAmount
         amountText = MoneyFormat.number(Decimal(amount))

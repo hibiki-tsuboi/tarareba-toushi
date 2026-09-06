@@ -9,29 +9,27 @@ import Testing
         configuration: AppConfiguration = AppConfiguration(mode: .sample), now: Date = Date(timeIntervalSince1970: 10_000)
     ) -> FundRepository {
         FundRepository(
-            configuration: configuration, transport: transport, store: store,
-            bundled: { try Fixtures.validated() }, now: { now })
+            configuration: configuration, transport: transport, store: store, now: { now })
     }
 
     @Test func offlineFirstLaunchAnd404() async {
         let repo = repository()
         await repo.start()
-        #expect(repo.dataset != nil)
-        #expect(repo.origin == .bundled)
+        #expect(repo.dataset == nil)
+        #expect(repo.statusLabel == "データ未取得")
         #expect(repo.message?.contains("404") == true)
         #expect(repo.checkedAt == nil)
         #expect(!repo.isRefreshing)
     }
 
-    @Test func corruptCacheFallsBackToBundle() async {
+    @Test func corruptCacheLeavesNoResultsUntilDownload() async {
         let repo = repository(store: MemoryStore(corrupt: true))
         await repo.start(refresh: false)
-        #expect(repo.dataset != nil)
-        #expect(repo.origin == .bundled)
+        #expect(repo.dataset == nil)
         #expect(repo.message != nil)
     }
 
-    @Test func liveModeNeverFallsBackToSample() async {
+    @Test func freshInstallHasNoDatasetBeforeNetwork() async {
         var config = AppConfiguration()
         config.mode = .live
         let repo = repository(configuration: config)
@@ -41,11 +39,11 @@ import Testing
 
     @Test func unchangedVersionOnlyFetchesManifestAndThrottles() async throws {
         let transport = MockTransport(try Fixtures.responses(Fixtures.snapshot()))
-        let repo = repository(transport: transport)
+        let repo = repository(transport: transport, store: MemoryStore(Fixtures.envelope()))
         await repo.start()
         #expect(await transport.count == 1)
         #expect(repo.checkedAt != nil)
-        #expect(repo.fetchedAt == nil)
+        #expect(repo.fetchedAt == Date(timeIntervalSince1970: 100))
         await repo.refresh()
         #expect(await transport.count == 1)
         await repo.refresh(force: true)
@@ -104,7 +102,7 @@ import Testing
         async let first: Void = repo.refresh(force: true)
         async let second: Void = repo.refresh(force: true)
         _ = await (first, second)
-        #expect(await transport.count == 1)
+        #expect(await transport.count == 3)
     }
 
     @Test func unsafePathStopsBeforeSeriesRequest() async throws {
@@ -140,7 +138,7 @@ import Testing
 
     @Test func inputChangesAreLocalAndPersistOnlyValidValues() async throws {
         let transport = MockTransport()
-        let repo = repository(transport: transport)
+        let repo = repository(transport: transport, store: MemoryStore(Fixtures.envelope()))
         await repo.start(refresh: false)
         let name = "tests.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: name))

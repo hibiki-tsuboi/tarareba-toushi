@@ -125,7 +125,6 @@ async function atomicWrite(path, contents) {
 export async function writeSnapshot(snapshot, root) {
     validate(snapshot, 'live');
     const target = resolve(root, 'public/live');
-    const bundle = resolve(root, '../ios/TararebaToushi/Resources/BundledLive.json');
     const oldManifest = await readJSON(resolve(target, 'manifest.json'));
     if (oldManifest?.datasetVersion === snapshot.manifest.datasetVersion) {
         // Content did not change. Keep the timestamp and immutable URLs identical.
@@ -147,13 +146,11 @@ export async function writeSnapshot(snapshot, root) {
         if (old) assert.deepEqual(old, snapshot.series.find(s => s.fundId === fund.id), '既存の版は変更できません');
     }
     await mkdir(resolve(target, 'funds'), { recursive: true });
-    await mkdir(dirname(bundle), { recursive: true });
     for (const fund of snapshot.manifest.funds) {
         const path = resolve(target, fund.path);
         if (!await readJSON(path)) await atomicWrite(path, json(snapshot.series.find(s => s.fundId === fund.id)));
     }
-    await atomicWrite(bundle, json(snapshot));
-    // The manifest is the last write, after both validated histories and the app bundle exist.
+    // Publish the manifest only after both validated histories exist.
     await atomicWrite(resolve(target, 'manifest.json'), json(snapshot.manifest));
     return snapshot;
 }
@@ -197,7 +194,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
         const snapshot = await updateFromMufg(root);
         console.log(`Updated ${snapshot.manifest.datasetVersion}: ` +
             snapshot.series.map(s => `${s.fundId} ${s.observations.length} observations`).join(', '));
-        console.log('Local JSON and bundled live data are ready. No deployment was performed.');
+        console.log('Distribution JSON is ready. The iOS app is unchanged. No deployment was performed.');
     } catch (error) {
         console.error(error.message);
         process.exitCode = 1;

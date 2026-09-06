@@ -13,29 +13,24 @@ import Testing
         #expect(live.cacheIdentity != sample.cacheIdentity)
     }
 
-    @Test func bundledOfficialDataIsValidAndUsableOffline() async throws {
-        let source = BundledDatasetSource(mode: .live)
-        let dataset = try await source.load()
-        #expect(!dataset.snapshot.manifest.isSample)
-        #expect(dataset.earliestRequestedDate.rawValue == "2018-10-31")
-        #expect(dataset.funds.allSatisfy { $0.series.source.kind == "official" })
-        let result = try SimulationCalculator.calculate(
-            .init(amount: 1_000_000, requestedDate: "2025-01-01"), dataset: dataset)
-        #expect(!result.isSample)
-        #expect(result.funds.allSatisfy { $0.points.first?.amount == 1_000_000 })
-        #expect(result.startDate.rawValue == "2025-01-06")
+    @Test func appContainsNoBundledHistory() {
+        #expect(Bundle.main.url(forResource: "BundledLive", withExtension: "json") == nil)
+        #expect(Bundle.main.url(forResource: "BundledSample", withExtension: "json") == nil)
+        #expect((Bundle.main.urls(forResourcesWithExtension: "json", subdirectory: nil) ?? []).isEmpty)
+        #expect((Bundle.main.urls(forResourcesWithExtension: "csv", subdirectory: nil) ?? []).isEmpty)
     }
 
-    @Test func liveBundleSurvivesRemote404AndCanUpdateLater() async throws {
-        let snapshot = Fixtures.snapshot(version: "live-v1", mode: .live)
-        let bundle = try DatasetValidator.validate(snapshot, mode: .live)
+    @Test func firstLaunchFailureShowsNoResultsAndRetryDownloadsData() async throws {
         let transport = MockTransport()
-        let repo = FundRepository(
-            configuration: AppConfiguration(), transport: transport, store: MemoryStore(), bundled: { bundle })
+        let store = MemoryStore()
+        let repo = FundRepository(configuration: AppConfiguration(), transport: transport, store: store)
         await repo.start()
-        #expect(repo.dataset?.snapshot == snapshot)
-        #expect(repo.statusLabel == "同梱実データを表示中")
+        #expect(repo.dataset == nil)
+        #expect(await store.value == nil)
+        #expect(repo.statusLabel == "データ未取得")
         #expect(repo.message?.contains("404") == true)
+        #expect(repo.checkedAt == nil && repo.fetchedAt == nil)
+        #expect(!repo.isLoading && !repo.isRefreshing)
         let updated = Fixtures.snapshot(version: "live-v2", mode: .live)
         await transport.set(try Fixtures.responses(updated))
         await repo.refresh(force: true)
@@ -46,15 +41,70 @@ import Testing
 
     @Test func liveRefreshRejectsSampleAndKeepsPreviousSnapshot() async throws {
         let snapshot = Fixtures.snapshot(version: "live-v1", mode: .live)
-        let bundle = try DatasetValidator.validate(snapshot, mode: .live)
         let response = try JSONEncoder().encode(Fixtures.snapshot().manifest)
         let repo = FundRepository(
             configuration: AppConfiguration(), transport: MockTransport(["/live/manifest.json": response]),
-            store: MemoryStore(), bundled: { bundle })
+            store: MemoryStore(Fixtures.envelope(snapshot)))
         await repo.start()
         #expect(repo.dataset?.snapshot == snapshot)
         #expect(repo.checkedAt == nil)
         #expect(repo.message != nil)
+    }
+
+    @Test func firstLaunchDownloadsBothHistoriesBeforeShowingResults() async throws {
+        let snapshot = Fixtures.snapshot(version: "live-v1", mode: .live)
+        let transport = MockTransport(try Fixtures.responses(snapshot))
+        let store = MemoryStore()
+        let repo = FundRepository(configuration: AppConfiguration(), transport: transport, store: store)
+        #expect(repo.dataset == nil)
+        await repo.start()
+        #expect(await transport.count == 3)
+        #expect(repo.dataset?.snapshot == snapshot)
+        #expect(await store.value?.snapshot == snapshot)
+        #expect(repo.fetchedAt != nil)
+        let dataset = try #require(repo.dataset)
+        let result = try SimulationCalculator.calculate(.init(amount: 1_000_000, requestedDate: "2025-01-01"), dataset: dataset)
+        #expect(!result.isSample)
+        #expect(result.funds[0].displayedValuation == 1_200_000)
+    }
+
+    @Test func partialFirstDownloadDoesNotLeavePartialCache() async throws {
+        let snapshot = Fixtures.snapshot(version: "live-v1", mode: .live)
+        var responses = try Fixtures.responses(snapshot)
+        responses.removeValue(forKey: "/live/funds/sp500.live-v1.json")
+        let store = MemoryStore()
+        let repo = FundRepository(configuration: AppConfiguration(), transport: MockTransport(responses), store: store)
+        await repo.start()
+        #expect(repo.dataset == nil)
+        #expect(await store.value == nil)
+        #expect(repo.checkedAt == nil)
+    }
+
+    @Test func downloadedDataIsAvailableOnLaterOfflineLaunch() async {
+        let snapshot = Fixtures.snapshot(version: "live-v1", mode: .live)
+        let repo = FundRepository(
+            configuration: AppConfiguration(), transport: MockTransport(), store: MemoryStore(Fixtures.envelope(snapshot)))
+        await repo.start()
+        #expect(repo.dataset?.snapshot == snapshot)
+        #expect(repo.message?.contains("404") == true)
+        #expect(repo.statusLabel == "取得済みの実データを表示中")
+    }
+
+    @Test func oldBundledCacheMustBeDownloadedAgain() async throws {
+        let snapshot = Fixtures.snapshot(version: "live-v1", mode: .live)
+        var legacy = Fixtures.envelope(snapshot, checkedAt: Date())
+        legacy.origin = .bundled
+        legacy.fetchedAt = nil
+        let store = MemoryStore(legacy)
+        let transport = MockTransport(try Fixtures.responses(snapshot))
+        let repo = FundRepository(configuration: AppConfiguration(), transport: transport, store: store)
+        await repo.start(refresh: false)
+        #expect(repo.dataset == nil)
+        #expect(repo.checkedAt == nil)
+        await repo.refresh()
+        #expect(await transport.count == 3)
+        #expect(await store.value?.origin == .remote)
+        #expect(await store.value?.fetchedAt != nil)
     }
 
     @Test func liveValidationRejectsSyntheticSourceAndInvalidAttribution() {

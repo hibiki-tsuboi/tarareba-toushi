@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { resolve, dirname } from 'node:path';
 import assert from 'node:assert/strict';
 import { validate } from './contract.mjs';
+import { verifyNoDataFiles } from './verify-app-data.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const read = async path => {
@@ -17,9 +18,8 @@ for (const mode of ['sample', 'live']) {
         assert.match(fund.path, /^funds\/(demo-)?(all-country|sp500)\.[a-z0-9-]+\.json$/);
         series.push(await read(resolve(root, `public/${mode}`, fund.path)));
     }
-    const snapshot = validate({ manifest, series }, mode);
-    const name = mode === 'sample' ? 'BundledSample' : 'BundledLive';
-    const bundled = JSON.parse(await readFile(resolve(root, `../ios/TararebaToushi/Resources/${name}.json`), 'utf8'));
-    assert.deepEqual(snapshot, validate(bundled, mode), 'Bundled and distributed data differ');
-    console.log(`Validated ${manifest.datasetVersion}: schema, dates, values, common dates, paths and bundle parity.`);
+    validate({ manifest, series }, mode);
+    console.log(`Validated ${manifest.datasetVersion}: schema, dates, values, common dates and paths.`);
 }
+await verifyNoDataFiles(resolve(root, '../ios/TararebaToushi'));
+console.log('Verified: the app source tree contains no JSON/CSV data resources.');

@@ -2,6 +2,7 @@ import CryptoKit
 import Foundation
 
 nonisolated enum SnapshotOrigin: String, Codable, Sendable {
+    // `bundled` is retained only to identify and ignore caches made by the old development build.
     case bundled, remote
 }
 
@@ -40,12 +41,14 @@ actor LocalSnapshotStore: SnapshotStore {
         guard size <= 6 * 1024 * 1024 else { throw DataIssue("保存データが大きすぎます。") }
         let stored = try JSONDecoder().decode(StoredSnapshot.self, from: Data(contentsOf: file))
         guard stored.identity == identity else { throw DataIssue("保存データの配信元が一致しません。") }
+        guard stored.origin == .remote, stored.fetchedAt != nil else { return nil }
         _ = try DatasetValidator.validate(stored.snapshot, mode: mode)
         return stored
     }
 
     func save(_ value: StoredSnapshot) throws {
         guard value.identity == identity else { throw DataIssue("保存先の識別情報が一致しません。") }
+        guard value.origin == .remote, value.fetchedAt != nil else { throw DataIssue("未取得のデータは保存できません。") }
         _ = try DatasetValidator.validate(value.snapshot, mode: mode)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         var folder = directory
@@ -55,25 +58,5 @@ actor LocalSnapshotStore: SnapshotStore {
         let bytes = try JSONEncoder().encode(value)
         // One validated envelope; atomic replacement keeps both funds on the same version.
         try bytes.write(to: file, options: .atomic)
-    }
-}
-
-nonisolated struct BundledDatasetSource: Sendable {
-    let url: URL?
-    let mode: DatasetMode
-
-    init(mode: DatasetMode, bundle: Bundle = .main) {
-        self.mode = mode
-        self.url = bundle.url(forResource: mode.bundleName, withExtension: "json")
-    }
-
-    func load() async throws -> ValidatedDataset {
-        guard let url else { throw DataIssue("同梱データが見つかりません。") }
-        return
-            try await Task.detached(priority: .userInitiated) {
-                let snapshot = try JSONDecoder().decode(DatasetSnapshot.self, from: Data(contentsOf: url))
-                return try DatasetValidator.validate(snapshot, mode: mode)
-            }
-            .value
     }
 }

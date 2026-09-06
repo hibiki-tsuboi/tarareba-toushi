@@ -78,7 +78,7 @@ test('live datasets require official sources, HTTPS attribution and separate ide
     }
 });
 
-test('keeps unchanged editions stable, preserves old files and rejects history loss', async t => {
+test('writes distribution files only, keeps editions stable and rejects history loss', async t => {
     const directory = await mkdtemp(resolve(tmpdir(), 'tarareba-mufg-'));
     t.after(() => rm(directory, { recursive: true, force: true }));
     const root = resolve(directory, 'tarareba-data');
@@ -94,8 +94,7 @@ test('keeps unchanged editions stable, preserves old files and rejects history l
     updated[0].observations.splice(1, 1);
     await assert.rejects(writeSnapshot(createSnapshot(updated), root), /観測日が欠け/);
     assert.equal(await readFile(resolve(root, 'public/live/manifest.json'), 'utf8'), manifest);
-    const bundle = JSON.parse(await readFile(resolve(directory, 'ios/TararebaToushi/Resources/BundledLive.json'), 'utf8'));
-    assert.deepEqual(bundle, next);
+    await assert.rejects(readdir(resolve(directory, 'ios')), { code: 'ENOENT' });
 });
 
 test('rejects an existing immutable file with different content', async t => {
@@ -127,7 +126,7 @@ test('rejects HTTP errors, HTML and advertised or streamed oversize responses', 
     assert(options.signal instanceof AbortSignal);
 });
 
-test('an upstream failure leaves the last valid manifest and bundle intact', async t => {
+test('an upstream failure leaves the last valid manifest intact', async t => {
     const directory = await mkdtemp(resolve(tmpdir(), 'tarareba-mufg-'));
     t.after(() => rm(directory, { recursive: true, force: true }));
     const root = resolve(directory, 'tarareba-data');

@@ -9,7 +9,7 @@ manifestは `schemaVersion: 1`、`datasetVersion`、`isSample`、UTCのISO 8601 
 | 通常の実データ | `live/manifest.json` | `all-country` / `sp500` | `official` |
 | 開発用サンプル | `sample/manifest.json` | `demo-all-country` / `demo-sp500` | `synthetic` |
 
-実データは `isSample: false` とHTTPSの出典URLが必要です。サンプルは `isSample: true` で、商品名に「サンプル」を含めます。設定モードに合わないID・出典・フラグは拒否し、キャッシュや同梱ファイルもモード別に分離します。
+実データは `isSample: false` とHTTPSの出典URLが必要です。サンプルは `isSample: true` で、商品名に「サンプル」を含めます。設定モードに合わないID・出典・フラグは拒否し、キャッシュをモード別に分離します。どちらのモードも価格データを同梱せず、初回に公開URLから取得します。
 
 `publishedAt` は配信データを作成した日時です。端末での取得日時や観測日の最終日とは異なります。実データの版が同じ場合は、確認し直しても作成日時を変更しません。
 
@@ -56,4 +56,4 @@ manifestは `schemaVersion: 1`、`datasetVersion`、`isSample`、UTCのISO 8601 
 
 ## サンプルの再現性
 
-生成はネットワーク不要で、開始・終了・seed・versionが同じなら同一です。平日の架空時系列であり、日本の祝日カレンダーや実績を再現しません。固定の3点フィクスチャはSwiftテストに分離しています。配信JSONと同梱 `BundledSample.json` は共通の生成処理から作り、`npm run validate` で一致を確認します。
+生成はネットワーク不要で、開始・終了・seed・versionが同じなら同一です。平日の架空時系列であり、日本の祝日カレンダーや実績を再現しません。生成先は `public/sample/` のみです。固定フィクスチャはSwiftのテストターゲットに置き、UIテストではランナーから応答を渡します。`npm run validate` は配信JSONの契約に加えて、アプリのソース配下に価格データファイルがないことも確認します。
