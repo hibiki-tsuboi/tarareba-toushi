@@ -3,3 +3,9 @@
 
 /sample/funds/*
   Cache-Control: public, max-age=31536000, immutable
+
+/live/manifest.json
+  Cache-Control: public, max-age=0, must-revalidate
+
+/live/funds/*
+  Cache-Control: public, max-age=31536000, immutable

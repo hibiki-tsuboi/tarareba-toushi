@@ -1,13 +1,29 @@
-# サンプルJSON配信
+# 比較用JSON配信
 
-Cloudflare Workers Static Assetsで、たられば投資の**架空データだけ**を配信します。Worker名・配信先は既存設定を維持しています。`public/test.json` は従来の疎通確認用です。
+Cloudflare Workers Static Assets向けに、たられば投資の実データと開発用サンプルを用意します。Worker名・配信先は既存設定を維持しています。`public/test.json` は従来の疎通確認用です。
 
-## ローカルで生成・検証
+## 公式データの取得・更新
 
-このディレクトリで実行します。依存のインストール以外、生成・検証にネットワークは不要です。Node.js 22以上を使用してください。
+Node.js 22以上を使用し、このディレクトリで実行します。
 
 ```sh
 npm ci
+npm run fetch:mufg
+npm run validate
+npm test
+```
+
+`fetch:mufg` は2商品の公式「設定来データ」CSVと最新値APIに、順番に計4回アクセスします。Shift_JISをデコードし、商品・列・日付・正数・設定来の範囲・分配金再投資系列・APIとの最新日/基準価額一致を確認します。取得や照合に失敗した場合は時間をおいて再実行してください。アプリからUFJへの直接通信は行いません。
+
+全体の検証に成功すると `public/live/` と `../ios/TararebaToushi/Resources/BundledLive.json` を生成します。版は `mufg-YYYYMMDD-<内容のハッシュ>`、作成日時はUTC。既存の履歴ファイルは保持し、データが変わらない場合は同じ版・日時になります。新版でも既存の観測日が欠ける履歴は拒否します。
+
+取得処理の詳細は [公式データの取り込み](../docs/mufg-data.md) を参照してください。更新は手動で、定期取得や自動デプロイは設定していません。同時に複数の更新コマンドを実行せず、コマンドの正常終了と検証を確認してから公開します。
+
+## 開発用サンプルの生成
+
+架空サンプルはネットワーク不要で生成します。`generate` は実データを変更しません。
+
+```sh
 npm run generate
 npm run validate
 npm test
@@ -24,7 +40,7 @@ npm run validate
 
 ## 手動公開
 
-**以下は公開を選ぶ時に実行する手順です。実装作業ではデプロイしていません。**
+**以下は公開を選ぶ時に実行する手順です。今回の実装作業ではデプロイしていません。**
 
 ```sh
 npm run validate
@@ -38,12 +54,13 @@ npm run deploy
 
 ```sh
 curl -i https://tarareba-data.hibiki-apps.workers.dev/test.json
+curl -i https://tarareba-data.hibiki-apps.workers.dev/live/manifest.json
 curl -i https://tarareba-data.hibiki-apps.workers.dev/sample/manifest.json
 curl -i https://tarareba-data.hibiki-apps.workers.dev/sample/funds/demo-all-country.sample-v1.json
 curl -i https://tarareba-data.hibiki-apps.workers.dev/sample/funds/demo-sp500.sample-v1.json
 ```
 
-HTTP 200、`Content-Type: application/json`、JSON内の版・商品ID・日付を確認します。新版ではURL末尾をその版に変更します。manifestの404はサンプル未配置を示す場合があります。アプリはその場合も同梱サンプルで動作します。
+実データの2つの履歴URLは `live/manifest.json` の `funds[].path` を `live/` に連結して確認します。HTTP 200、`Content-Type: application/json`、JSON内の版・商品ID・日付を確認してください。manifestの404はファイル未配置を示す場合があります。アプリはその場合も同梱実データで動作します。
 
 `_headers` ではmanifestに `max-age=0, must-revalidate`、版付き履歴に `max-age=31536000, immutable` を指定しています。実際のレスポンスで適用を確認してください。これはクライアント向け設定であり、CDN内部のキャッシュTTLを同一に設定したという意味ではありません。[Cloudflare公式ヘッダー仕様](https://developers.cloudflare.com/workers/static-assets/headers/)
 

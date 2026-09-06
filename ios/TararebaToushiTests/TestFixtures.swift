@@ -3,24 +3,28 @@ import Foundation
 @testable import TararebaToushi
 
 nonisolated enum Fixtures {
-    static func snapshot(version: String = "sample-v1", a: String = "12000", b: String = "14000") -> DatasetSnapshot {
-        let ids = DatasetMode.sample.fundIDs
+    static func snapshot(
+        version: String = "sample-v1", a: String = "12000", b: String = "14000", mode: DatasetMode = .sample
+    ) -> DatasetSnapshot {
+        let ids = mode.fundIDs
         let dates = ["2024-12-30", "2025-01-06", "2026-09-04"]
         let funds = ids.enumerated()
             .map { i, id in
                 FundDescriptor(
-                    id: id, displayName: i == 0 ? "オルカン（サンプル）" : "S&P500（サンプル）",
+                    id: id, displayName: (i == 0 ? "オルカン" : "S&P500") + (mode == .sample ? "（サンプル）" : ""),
                     currency: "JPY", path: "funds/\(id).\(version).json", firstDate: dates[0], lastDate: dates[2])
             }
         let manifest = Manifest(
-            schemaVersion: 1, datasetVersion: version, isSample: true,
+            schemaVersion: 1, datasetVersion: version, isSample: mode == .sample,
             publishedAt: "2026-09-06T00:00:00Z", funds: funds)
         let series = ids.enumerated()
             .map { i, id in
                 FundSeries(
-                    schemaVersion: 1, datasetVersion: version, isSample: true, fundId: id, currency: "JPY",
+                    schemaVersion: 1, datasetVersion: version, isSample: mode == .sample, fundId: id, currency: "JPY",
                     valueBasis: "reinvestedIndex",
-                    source: DataSourceDescription(kind: "synthetic", name: "架空", url: nil, note: "実績ではありません"),
+                    source: DataSourceDescription(
+                        kind: mode == .sample ? "synthetic" : "official", name: "テスト専用の架空値",
+                        url: mode == .sample ? nil : "https://example.com/fund", note: "実績ではありません"),
                     observations: zip(dates, ["9900", "10000", i == 0 ? a : b])
                         .map { FundObservation(date: $0, value: $1) })
             }
@@ -33,14 +37,16 @@ nonisolated enum Fixtures {
 
     static func envelope(_ snapshot: DatasetSnapshot = snapshot(), checkedAt: Date? = nil) -> StoredSnapshot {
         StoredSnapshot(
-            identity: AppConfiguration().cacheIdentity, snapshot: snapshot, origin: .remote,
+            identity: AppConfiguration(mode: snapshot.manifest.isSample ? .sample : .live).cacheIdentity,
+            snapshot: snapshot, origin: .remote,
             fetchedAt: Date(timeIntervalSince1970: 100), checkedAt: checkedAt)
     }
 
     static func responses(_ snapshot: DatasetSnapshot) throws -> [String: Data] {
-        var values = ["/sample/manifest.json": try JSONEncoder().encode(snapshot.manifest)]
+        let mode = snapshot.manifest.isSample ? "sample" : "live"
+        var values = ["/\(mode)/manifest.json": try JSONEncoder().encode(snapshot.manifest)]
         for f in snapshot.manifest.funds {
-            values["/sample/\(f.path)"] = try JSONEncoder().encode(snapshot.series.first { $0.fundId == f.id })
+            values["/\(mode)/\(f.path)"] = try JSONEncoder().encode(snapshot.series.first { $0.fundId == f.id })
         }
         return values
     }

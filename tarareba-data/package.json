@@ -1,10 +1,11 @@
 {
   "name": "tarareba-data",
   "version": "1.0.0",
-  "description": "たられば投資の架空サンプルJSON生成・検証・配信",
+  "description": "たられば投資の公式データ取得・サンプル生成・JSON検証・配信",
   "main": "index.js",
   "scripts": {
     "generate": "node scripts/generate-sample.mjs",
+    "fetch:mufg": "node scripts/fetch-mufg.mjs",
     "validate": "node scripts/validate.mjs",
     "test": "node --test tests/*.test.mjs",
     "dev": "wrangler dev",

@@ -11,6 +11,7 @@ struct ContentView: View {
     private var automaticallyRefreshes: Bool {
         #if DEBUG
             !ProcessInfo.processInfo.arguments.contains("--offline-sample")
+                && !ProcessInfo.processInfo.arguments.contains("--offline-live")
                 && ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil
         #else
             true
@@ -32,7 +33,7 @@ struct ContentView: View {
                     if let result = model.result {
                         results(result)
                     } else if repository.isLoading {
-                        ProgressView("サンプルを読み込んでいます").frame(maxWidth: .infinity)
+                        ProgressView("データを読み込んでいます").frame(maxWidth: .infinity)
                     } else if repository.dataset == nil {
                         ContentUnavailableView(
                             "データを読み込めませんでした", systemImage: "chart.xyaxis.line",
@@ -89,7 +90,7 @@ struct ContentView: View {
             Text("同じ金額、同じ期間。ふたつの選択を比べよう。")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
-            SampleNoticeView()
+            DataNoticeView(mode: repository.configuration.mode)
         }
     }
 
@@ -162,7 +163,9 @@ struct ContentView: View {
                 .id(
                     "\(result.input.amount)-\(result.startDate.rawValue)-\(result.endDate.rawValue)-\(repository.dataset?.snapshot.manifest.datasetVersion ?? "")"
                 )
-            Text("サンプルデータによる概算です。実際の運用実績ではありません。税金・購入手数料等は含みません。")
+            Text(result.isSample
+                ? "サンプルデータによる概算です。実際の運用実績ではありません。税金・購入手数料等は含みません。"
+                : "過去の基準価額（分配金再投資）に基づく概算です。税金・購入手数料等は含みません。")
                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }
     }

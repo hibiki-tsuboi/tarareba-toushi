@@ -1,6 +1,39 @@
 import XCTest
 
 final class ComparisonUITests: XCTestCase {
+    @MainActor func testLiveComparisonAndAttributionOffline() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--offline-live", "--ui-testing"]
+        app.launchEnvironment["TARAREBA_TEST_DATE"] = "2025-01-01"
+        app.launchEnvironment["TARAREBA_TEST_AMOUNT"] = "1,000,000"
+        app.launch()
+        XCTAssertTrue(app.staticTexts["valuation-all-country"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["valuation-sp500"].exists)
+        XCTAssertFalse(app.staticTexts["valuation-demo-all-country"].exists)
+        app.buttons["data-info"].tap()
+        XCTAssertTrue(app.navigationBars["データと計算について"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["実データ"].exists)
+        let information = XCTAttachment(screenshot: app.screenshot())
+        information.name = "live-data-information"
+        information.lifetime = .keepAlways
+        add(information)
+        app.buttons["閉じる"].tap()
+        let top = XCTAttachment(screenshot: app.screenshot())
+        top.name = "live-comparison"
+        top.lifetime = .keepAlways
+        add(top)
+        app.swipeUp()
+        let comparison = XCTAttachment(screenshot: app.screenshot())
+        comparison.name = "live-results"
+        comparison.lifetime = .keepAlways
+        add(comparison)
+        app.swipeUp()
+        let chart = XCTAttachment(screenshot: app.screenshot())
+        chart.name = "live-chart"
+        chart.lifetime = .keepAlways
+        add(chart)
+    }
+
     @MainActor func testOfflineComparisonAndInvalidAmount() throws {
         let app = XCUIApplication()
         app.launchArguments = ["--offline-sample", "--ui-testing"]

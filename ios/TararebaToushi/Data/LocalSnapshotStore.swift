@@ -58,16 +58,21 @@ actor LocalSnapshotStore: SnapshotStore {
     }
 }
 
-nonisolated struct BundledSampleSource: Sendable {
+nonisolated struct BundledDatasetSource: Sendable {
     let url: URL?
-    init(url: URL? = Bundle.main.url(forResource: "BundledSample", withExtension: "json")) { self.url = url }
+    let mode: DatasetMode
+
+    init(mode: DatasetMode, bundle: Bundle = .main) {
+        self.mode = mode
+        self.url = bundle.url(forResource: mode.bundleName, withExtension: "json")
+    }
 
     func load() async throws -> ValidatedDataset {
-        guard let url else { throw DataIssue("同梱サンプルが見つかりません。") }
+        guard let url else { throw DataIssue("同梱データが見つかりません。") }
         return
             try await Task.detached(priority: .userInitiated) {
                 let snapshot = try JSONDecoder().decode(DatasetSnapshot.self, from: Data(contentsOf: url))
-                return try DatasetValidator.validate(snapshot, mode: .sample)
+                return try DatasetValidator.validate(snapshot, mode: mode)
             }
             .value
     }

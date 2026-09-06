@@ -6,7 +6,7 @@ import Testing
 @MainActor struct RepositoryTests {
     private func repository(
         transport: MockTransport = MockTransport(), store: any SnapshotStore = MemoryStore(),
-        configuration: AppConfiguration = AppConfiguration(), now: Date = Date(timeIntervalSince1970: 10_000)
+        configuration: AppConfiguration = AppConfiguration(mode: .sample), now: Date = Date(timeIntervalSince1970: 10_000)
     ) -> FundRepository {
         FundRepository(
             configuration: configuration, transport: transport, store: store,
@@ -120,7 +120,7 @@ import Testing
     @Test func fileStoreRoundTripAndOriginIsolation() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
-        let config = AppConfiguration()
+        let config = AppConfiguration(mode: .sample)
         let store = LocalSnapshotStore(directory: directory, configuration: config)
         try await store.save(Fixtures.envelope())
         #expect(try await store.load()?.snapshot == Fixtures.snapshot())

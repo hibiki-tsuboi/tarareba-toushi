@@ -4,28 +4,34 @@ struct DataInformationView: View {
     let repository: FundRepository
     let result: SimulationResult?
     @Environment(\.dismiss) private var dismiss
+    private var isSample: Bool { repository.configuration.mode == .sample }
 
     var body: some View {
         NavigationStack {
             List {
                 Section {
-                    SampleNoticeView()
-                    Text("画面の2商品は比較体験を試すための架空データです。実在する投資信託の基準価額や成績を再現していません。")
+                    DataNoticeView(mode: repository.configuration.mode)
+                    Text(isSample
+                        ? "画面の2商品は比較体験を試すための架空データです。実在する投資信託の基準価額や成績を再現していません。"
+                        : "eMAXIS Slim 全世界株式（オール・カントリー）と、eMAXIS Slim 米国株式（S&P500）を比較します。運用会社の公開データを本アプリ用に加工しています。株価指数そのものの値ではありません。")
                 }
                 Section("表示中のデータ") {
-                    row("データモード", "サンプル")
+                    row("データモード", repository.configuration.mode.label)
                     row("読み込み元", repository.statusLabel)
                     row("版", repository.dataset?.snapshot.manifest.datasetVersion ?? "—")
                     row("共通のデータ基準日", repository.dataset?.endDate.label ?? "—")
-                    row("最終取得日時", timestamp(repository.fetchedAt, empty: "未取得（同梱サンプル）"))
+                    row("端末での最終取得日時", timestamp(repository.fetchedAt, empty: "未取得（同梱データを使用）"))
                     row("更新確認成功日時", timestamp(repository.checkedAt, empty: "未確認"))
                     if let dataset = repository.dataset {
-                        row("ファイル公開日時", dataset.snapshot.manifest.publishedAt)
+                        row("配信データの作成日時", dataset.snapshot.manifest.publishedAt)
                         ForEach(dataset.funds, id: \.descriptor.id) { fund in
                             VStack(alignment: .leading, spacing: 6) {
                                 Text(fund.descriptor.displayName).fontWeight(.medium)
                                 Text(fund.series.source.name)
                                 Text(fund.series.source.note).foregroundStyle(.secondary)
+                                if let text = fund.series.source.url, let url = URL(string: text) {
+                                    Link("出典の商品ページ", destination: url)
+                                }
                             }
                             .font(.footnote)
                         }
@@ -43,15 +49,17 @@ struct DataInformationView: View {
                         row("指定した日", result.requestedDate.label)
                         row("計算に使用した日", "\(result.startDate.label)〜\(result.endDate.label)")
                     }
-                    Text("今回は分配金再投資を表す架空の指数（reinvestedIndex）を使っています。分配金を別に加算していません。")
-                    Text(
-                        "将来、分配金なしと全期間について確認された基準価額（navWithoutDistributions）を使う場合は、その比率を用います。分配金のある基準価額をそのまま再投資込みとは扱いません。"
-                    )
+                    Text(isSample
+                        ? "今回は分配金再投資を表す架空の指数を使っています。分配金を別に加算していません。"
+                        : "公式の「基準価額（分配金再投資）」を使います。税引前の分配金を再投資したと仮定する系列です。分配実績がない場合は基準価額と同じ値になります。分配金を別に足していません。")
                     Text("内部では10進数で計算し、表示時に円単位で四捨五入します。表示損益は表示評価額から元本を引き、差額は2つの表示評価額から求めます。損益率は小数1桁表示です。")
                 }
                 Section("比較の前提") {
                     Text("売却時の税金、購入・換金時の手数料等は計算していません。注文・約定日・端数処理・再投資日を完全に再現するものではありません。")
-                    Text("実データに切り替える場合、基準価額に控除済みの費用を重複して引くことはしません。データの意味と利用条件を確認してから対応します。")
+                    if !isSample {
+                        Text("使用する基準価額は運用管理費用（信託報酬）控除後です。信託報酬をもう一度差し引くことはしません。")
+                        Text("「オルカン」は三菱UFJアセットマネジメントの登録商標です。")
+                    }
                     Text("過去の比較結果は将来の成果を保証しません。特定の商品の購入を推奨するものではありません。")
                 }
             }

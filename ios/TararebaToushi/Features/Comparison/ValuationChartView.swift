@@ -155,7 +155,9 @@ struct ValuationChartView: View {
             }
         }
         .frame(height: 230)
-        .accessibilityLabel("2商品の評価額推移。実際の運用実績ではありません。下の前後ボタンでも観測日を選択できます。")
+        .accessibilityLabel(result.isSample
+            ? "2商品の評価額推移。実際の運用実績ではありません。下の前後ボタンでも観測日を選択できます。"
+            : "過去の基準価額から計算した2商品の評価額推移。下の前後ボタンでも観測日を選択できます。")
     }
 
     private func select(index: Int) {

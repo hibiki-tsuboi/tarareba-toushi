@@ -19,7 +19,7 @@ nonisolated enum DatasetValidator {
         _ = try TradingDay(String(manifest.publishedAt.prefix(10)))
         for fund in manifest.funds {
             guard fund.currency == "JPY", !fund.displayName.isEmpty, fund.displayName.count <= 80,
-                mode != .sample || fund.displayName.contains("サンプル"),
+                fund.displayName.contains("サンプル") == (mode == .sample),
                 fund.path == "funds/\(fund.id).\(manifest.datasetVersion).json"
             else {
                 throw DataIssue("商品名・通貨・配信パスが正しくありません。")
@@ -57,12 +57,17 @@ nonisolated enum DatasetValidator {
                 series.isSample == snapshot.manifest.isSample, series.currency == descriptor.currency,
                 ["reinvestedIndex", "navWithoutDistributions"].contains(series.valueBasis),
                 !series.source.name.isEmpty, !series.source.note.isEmpty,
-                mode != .sample || series.source.kind == "synthetic",
+                series.source.kind == (mode == .sample ? "synthetic" : "official"),
                 !series.observations.isEmpty, series.observations.count <= 30_000,
                 series.observations.first?.date == descriptor.firstDate,
                 series.observations.last?.date == descriptor.lastDate
             else {
                 throw DataIssue("データの版・系列の意味・期間が一致しません。")
+            }
+            if mode == .live {
+                guard let text = series.source.url, let url = URL(string: text),
+                    url.scheme == "https", url.host != nil, url.user == nil, url.password == nil
+                else { throw DataIssue("実データの出典URLが正しくありません。") }
             }
             var previous: TradingDay?
             var values: [TradingDay: Decimal] = [:]

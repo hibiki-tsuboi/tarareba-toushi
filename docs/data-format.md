@@ -2,7 +2,16 @@
 
 ## 配置
 
-`sample/manifest.json` は `schemaVersion: 1`、`datasetVersion`、`isSample: true`、UTCのISO 8601 `publishedAt` と2つの `funds` を持ちます。商品IDは `demo-all-country` / `demo-sp500`。`displayName` に「サンプル」を含め、`currency` はJPY固定です。
+manifestは `schemaVersion: 1`、`datasetVersion`、`isSample`、UTCのISO 8601 `publishedAt` と2つの `funds` を持ちます。`currency` はJPY固定です。
+
+| モード | manifest | 商品ID | 出典のkind |
+|---|---|---|---|
+| 通常の実データ | `live/manifest.json` | `all-country` / `sp500` | `official` |
+| 開発用サンプル | `sample/manifest.json` | `demo-all-country` / `demo-sp500` | `synthetic` |
+
+実データは `isSample: false` とHTTPSの出典URLが必要です。サンプルは `isSample: true` で、商品名に「サンプル」を含めます。設定モードに合わないID・出典・フラグは拒否し、キャッシュや同梱ファイルもモード別に分離します。
+
+`publishedAt` は配信データを作成した日時です。端末での取得日時や観測日の最終日とは異なります。実データの版が同じ場合は、確認し直しても作成日時を変更しません。
 
 `path` はmanifestのあるディレクトリを基準とする `funds/<id>.<datasetVersion>.json` のみ許可します。版は英小文字・数字・ハイフンの1〜64文字、先頭は英小文字または数字。絶対URL、親ディレクトリ、パーセントエンコード、クエリ、別ドメインの指定は許可しません。HTTPリダイレクトはすべて拒否します。
 
@@ -30,7 +39,7 @@
 
 - 日付は1900〜2200年の実在する `YYYY-MM-DD`。昇順・重複なし。先頭と末尾がmanifestの `firstDate` / `lastDate` と一致する必要があります。
 - 観測値は正の10進数文字列。整数部12桁以内、小数部6桁以内。指数表記、NaN、負数、0は禁止です。最大30,000観測/商品、HTTP応答は2MiB/ファイルまでです。
-- `reinvestedIndex` は分配金再投資を表す系列。現在は任意の10000を基準とした架空指数であり、実在ファンドの1万口あたりの基準価額ではありません。
+- `reinvestedIndex` は分配金再投資を表す系列。実データでは公式CSVの「基準価額（分配金再投資）」列（1万口あたり・信託報酬控除後）をそのまま使い、税引前分配金をさらに加算しません。サンプルでは任意の10000を基準とした架空指数を使います。
 - `navWithoutDistributions` は全配信期間について分配金なしと確認した基準価額用です。採用時は提供者が根拠・期間・費用の意味を確認し、出典注記を用意する必要があります。JSON検証だけで金融上の事実や利用許諾を証明するものではありません。
 
 ## 共通期間と計算

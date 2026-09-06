@@ -9,12 +9,15 @@ nonisolated enum DatasetMode: String, Codable, Sendable {
         case .live: ["all-country", "sp500"]
         }
     }
+
+    var label: String { self == .sample ? "サンプル" : "実データ" }
+    var bundleName: String { self == .sample ? "BundledSample" : "BundledLive" }
 }
 
 nonisolated struct AppConfiguration: Sendable {
     var dataBaseURL = "https://tarareba-data.hibiki-apps.workers.dev/"
-    var manifestPath = "sample/manifest.json"
-    var mode: DatasetMode = .sample
+    var mode: DatasetMode = .live
+    var manifestPath: String { "\(mode.rawValue)/manifest.json" }
     var refreshInterval: TimeInterval = 6 * 60 * 60
     static let schemaVersion = 1
     static let maximumAmount = 1_000_000_000

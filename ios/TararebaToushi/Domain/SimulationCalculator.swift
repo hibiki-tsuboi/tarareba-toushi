@@ -23,6 +23,7 @@ nonisolated struct FundResult: Identifiable, Sendable {
 }
 
 nonisolated struct SimulationResult: Sendable {
+    let isSample: Bool
     let input: SimulationInput
     let requestedDate: TradingDay
     let startDate: TradingDay
@@ -68,6 +69,7 @@ nonisolated enum SimulationCalculator {
         }
         guard results.count == 2 else { throw DataIssue("2商品の比較が必要です。") }
         return SimulationResult(
+            isSample: dataset.snapshot.manifest.isSample,
             input: input, requestedDate: requested, startDate: start, endDate: end,
             funds: results, displayedDifference: results[1].displayedValuation - results[0].displayedValuation)
     }

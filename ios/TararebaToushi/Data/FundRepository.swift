@@ -30,9 +30,14 @@ final class FundRepository {
     }
 
     static func makeDefault() -> FundRepository {
-        let configuration = AppConfiguration()
+        var configuration = AppConfiguration()
+        #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("--offline-sample") {
+                configuration.mode = .sample
+            }
+        #endif
         let directory = URL.applicationSupportDirectory.appendingPathComponent("FundSnapshots", isDirectory: true)
-        let source = BundledSampleSource()
+        let source = BundledDatasetSource(mode: configuration.mode)
         #if DEBUG
             if ProcessInfo.processInfo.arguments.contains("--ui-testing") {
                 let testDirectory = URL.temporaryDirectory.appendingPathComponent(
@@ -50,8 +55,10 @@ final class FundRepository {
     }
 
     var statusLabel: String {
-        if origin == .bundled { return "同梱サンプルを表示中" }
-        return "取得済みのサンプルを表示中"
+        guard dataset != nil else { return "データ未取得" }
+        let kind = configuration.mode == .sample ? "サンプル" : "実データ"
+        if origin == .bundled { return "同梱\(kind)を表示中" }
+        return "取得済みの\(kind)を表示中"
     }
 
     var isStale: Bool {
@@ -78,8 +85,14 @@ final class FundRepository {
         } catch {
             message = "保存データを読み込めませんでした。利用できるデータを確認します。"
         }
-        if dataset == nil, configuration.mode == .sample {
-            do { dataset = try await bundled() } catch { message = error.localizedDescription }
+        if dataset == nil {
+            do {
+                let candidate = try await bundled()
+                guard candidate.snapshot.manifest.isSample == (configuration.mode == .sample) else {
+                    throw DataIssue("同梱データのモードが一致しません。")
+                }
+                dataset = candidate
+            } catch { message = error.localizedDescription }
         }
         isLoading = false
         if refresh { await self.refresh() }
