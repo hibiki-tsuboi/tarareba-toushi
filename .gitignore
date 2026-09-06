@@ -1,0 +1,10 @@
+# macOS
+.DS_Store
+
+# Xcode user settings and build products
+xcuserdata/
+*.xcuserstate
+DerivedData/
+build/
+*.xcarchive
+*.ipa
