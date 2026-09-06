@@ -1,0 +1,5 @@
+/sample/manifest.json
+  Cache-Control: public, max-age=0, must-revalidate
+
+/sample/funds/*
+  Cache-Control: public, max-age=31536000, immutable

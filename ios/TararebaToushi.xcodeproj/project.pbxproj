@@ -6,8 +6,27 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXContainerItemProxy section */
+		DA7A0000000000000000006D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B6399528304CF27100D12DDA /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B639952F304CF27100D12DDA;
+			remoteInfo = TararebaToushi;
+		};
+		DA7A000000000000000000D1 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B6399528304CF27100D12DDA /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B639952F304CF27100D12DDA;
+			remoteInfo = TararebaToushi;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		B6399530304CF27100D12DDA /* TararebaToushi.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TararebaToushi.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		DA7A00000000000000000065 /* TararebaToushiTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; path = TararebaToushiTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		DA7A000000000000000000C9 /* TararebaToushiUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; path = TararebaToushiUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -16,10 +35,34 @@
 			path = TararebaToushi;
 			sourceTree = "<group>";
 		};
+		DA7A00000000000000000066 /* TararebaToushiTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = TararebaToushiTests;
+			sourceTree = "<group>";
+		};
+		DA7A000000000000000000CA /* TararebaToushiUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = TararebaToushiUITests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		B639952D304CF27100D12DDA /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DA7A00000000000000000068 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DA7A000000000000000000CC /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -33,6 +76,8 @@
 			isa = PBXGroup;
 			children = (
 				B6399532304CF27100D12DDA /* TararebaToushi */,
+				DA7A00000000000000000066 /* TararebaToushiTests */,
+				DA7A000000000000000000CA /* TararebaToushiUITests */,
 				B6399531304CF27100D12DDA /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,6 +86,8 @@
 			isa = PBXGroup;
 			children = (
 				B6399530304CF27100D12DDA /* TararebaToushi.app */,
+				DA7A000000000000000000C9 /* TararebaToushiUITests.xctest */,
+				DA7A00000000000000000065 /* TararebaToushiTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -69,6 +116,48 @@
 			productName = TararebaToushi;
 			productReference = B6399530304CF27100D12DDA /* TararebaToushi.app */;
 			productType = "com.apple.product-type.application";
+		};
+		DA7A00000000000000000064 /* TararebaToushiTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DA7A0000000000000000006A /* Build configuration list for PBXNativeTarget "TararebaToushiTests" */;
+			buildPhases = (
+				DA7A00000000000000000067 /* Sources */,
+				DA7A00000000000000000068 /* Frameworks */,
+				DA7A00000000000000000069 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				DA7A0000000000000000006E /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				DA7A00000000000000000066 /* TararebaToushiTests */,
+			);
+			name = TararebaToushiTests;
+			productName = TararebaToushiTests;
+			productReference = DA7A00000000000000000065 /* TararebaToushiTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		DA7A000000000000000000C8 /* TararebaToushiUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DA7A000000000000000000CE /* Build configuration list for PBXNativeTarget "TararebaToushiUITests" */;
+			buildPhases = (
+				DA7A000000000000000000CB /* Sources */,
+				DA7A000000000000000000CC /* Frameworks */,
+				DA7A000000000000000000CD /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				DA7A000000000000000000D2 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				DA7A000000000000000000CA /* TararebaToushiUITests */,
+			);
+			name = TararebaToushiUITests;
+			productName = TararebaToushiUITests;
+			productReference = DA7A000000000000000000C9 /* TararebaToushiUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
 
@@ -99,6 +188,8 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
+				DA7A000000000000000000C8 /* TararebaToushiUITests */,
+				DA7A00000000000000000064 /* TararebaToushiTests */,
 				B639952F304CF27100D12DDA /* TararebaToushi */,
 			);
 		};
@@ -106,6 +197,20 @@
 
 /* Begin PBXResourcesBuildPhase section */
 		B639952E304CF27100D12DDA /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DA7A00000000000000000069 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DA7A000000000000000000CD /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -122,7 +227,34 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		DA7A00000000000000000067 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DA7A000000000000000000CB /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		DA7A0000000000000000006E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B639952F304CF27100D12DDA /* TararebaToushi */;
+			targetProxy = DA7A0000000000000000006D /* PBXContainerItemProxy */;
+		};
+		DA7A000000000000000000D2 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B639952F304CF27100D12DDA /* TararebaToushi */;
+			targetProxy = DA7A000000000000000000D1 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		B6399539304CF27100D12DDA /* Debug */ = {
@@ -178,7 +310,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -236,7 +368,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
@@ -310,6 +442,76 @@
 			};
 			name = Release;
 		};
+		DA7A0000000000000000006B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = AK92W9FN2D;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = jp.hibiki.TararebaToushiTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/TararebaToushi.app/TararebaToushi";
+			};
+			name = Debug;
+		};
+		DA7A0000000000000000006C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = AK92W9FN2D;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = jp.hibiki.TararebaToushiTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/TararebaToushi.app/TararebaToushi";
+			};
+			name = Release;
+		};
+		DA7A000000000000000000CF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = AK92W9FN2D;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = jp.hibiki.TararebaToushiUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = TararebaToushi;
+			};
+			name = Debug;
+		};
+		DA7A000000000000000000D0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = AK92W9FN2D;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = jp.hibiki.TararebaToushiUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = TararebaToushi;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -327,6 +529,24 @@
 			buildConfigurations = (
 				B639953C304CF27100D12DDA /* Debug */,
 				B639953D304CF27100D12DDA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		DA7A0000000000000000006A /* Build configuration list for PBXNativeTarget "TararebaToushiTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DA7A0000000000000000006B /* Debug */,
+				DA7A0000000000000000006C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		DA7A000000000000000000CE /* Build configuration list for PBXNativeTarget "TararebaToushiUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DA7A000000000000000000CF /* Debug */,
+				DA7A000000000000000000D0 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

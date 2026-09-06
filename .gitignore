@@ -11,3 +11,9 @@ DerivedData/
 build/
 *.xcarchive
 *.ipa
+
+# Data distribution dependencies and local credentials
+node_modules/
+.wrangler/
+.dev.vars*
+.env*

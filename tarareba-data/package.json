@@ -1,0 +1,21 @@
+{
+  "name": "tarareba-data",
+  "version": "1.0.0",
+  "description": "たられば投資の架空サンプルJSON生成・検証・配信",
+  "main": "index.js",
+  "scripts": {
+    "generate": "node scripts/generate-sample.mjs",
+    "validate": "node scripts/validate.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "dev": "wrangler dev",
+    "deploy": "npm run validate && wrangler deploy"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "wrangler": "^4.129.0"
+  },
+  "private": true
+}
