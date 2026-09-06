@@ -9,6 +9,28 @@ struct DataInformationView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section("データの更新") {
+                    Text(repository.statusLabel)
+                        .fontWeight(.medium)
+                    if let message = repository.message {
+                        Text(message)
+                            .foregroundStyle(.secondary)
+                            .accessibilityIdentifier("update-message")
+                    } else if repository.dataset != nil, repository.isStale {
+                        Text("更新確認が必要です。取得済みのデータでシミュレーションできます。")
+                            .foregroundStyle(.secondary)
+                    }
+                    Button {
+                        Task { await repository.refresh(force: true) }
+                    } label: {
+                        HStack {
+                            if repository.isRefreshing { ProgressView() }
+                            Label(repository.isRefreshing ? "更新を確認中…" : "データを更新", systemImage: "arrow.clockwise")
+                        }
+                    }
+                    .disabled(repository.isRefreshing || repository.isLoading)
+                    .accessibilityIdentifier("refresh-data")
+                }
                 Section {
                     DataNoticeView(mode: repository.configuration.mode)
                     Text(isSample

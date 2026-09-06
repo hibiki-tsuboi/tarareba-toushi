@@ -39,38 +39,42 @@ struct DataNoticeView: View {
 struct FundResultCardView: View {
     let result: FundResult
     let index: Int
-    @ScaledMetric(relativeTo: .title3) private var badgeSize: CGFloat = 38
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Image(systemName: index == 0 ? "globe.asia.australia.fill" : "chart.line.uptrend.xyaxis")
-                .font(.title3).foregroundStyle(AppPalette.series(index))
-                .frame(width: badgeSize, height: badgeSize)
-                .background(AppPalette.series(index).opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
-                .accessibilityHidden(true)
             Text(result.descriptor.displayName)
-                .font(.subheadline.weight(.semibold)).fixedSize(horizontal: false, vertical: true)
-            VStack(alignment: .leading, spacing: 4) {
-                Text("評価額").font(.caption).foregroundStyle(.secondary)
-                Text(MoneyFormat.yen(result.displayedValuation))
-                    .font(.system(.title2, design: .rounded, weight: .bold)).monospacedDigit()
-                    .minimumScaleFactor(0.65).lineLimit(1)
-                    .accessibilityIdentifier("valuation-\(result.id)")
-            }
-            Divider()
-            VStack(alignment: .leading, spacing: 4) {
-                Text("損益").font(.caption).foregroundStyle(.secondary)
+                .font(.subheadline.weight(.semibold))
+                .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("増減額")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 Text(MoneyFormat.signed(result.displayedProfit) + "円")
-                    .font(.subheadline.bold()).monospacedDigit().minimumScaleFactor(0.7).lineLimit(1)
-                Text(MoneyFormat.signed(result.returnPercent, digits: 1) + "%")
-                    .font(.caption.weight(.semibold)).monospacedDigit()
+                    .font(.system(.largeTitle, design: .rounded, weight: .bold))
+                    .monospacedDigit()
+                    .minimumScaleFactor(0.5)
+                    .lineLimit(1)
+                    .foregroundStyle(result.displayedProfit <= 0 ? Color.primary : AppPalette.series(index))
+                    .accessibilityIdentifier("profit-\(result.id)")
             }
-            .foregroundStyle(result.displayedProfit < 0 ? Color.primary : AppPalette.series(index))
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline) { valuation }
+                VStack(alignment: .leading, spacing: 4) { valuation }
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 22))
+        .cardSurface()
         .accessibilityElement(children: .contain)
+    }
+
+    @ViewBuilder private var valuation: some View {
+        Text("投資後の金額")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        Text(MoneyFormat.yen(result.displayedValuation))
+            .font(.subheadline.weight(.semibold))
+            .monospacedDigit()
+            .accessibilityIdentifier("valuation-\(result.id)")
     }
 }
 
