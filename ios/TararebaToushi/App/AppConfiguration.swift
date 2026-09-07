@@ -5,8 +5,8 @@ nonisolated enum DatasetMode: String, Codable, Sendable {
 
     var fundIDs: [String] {
         switch self {
-        case .sample: ["demo-all-country", "demo-sp500", "demo-topix", "demo-nasdaq100"]
-        case .live: ["all-country", "sp500", "topix", "nasdaq100"]
+        case .sample: ["demo-all-country", "demo-sp500", "demo-topix", "demo-nasdaq100", "demo-nikkei225"]
+        case .live: ["all-country", "sp500", "topix", "nasdaq100", "nikkei225"]
         }
     }
 

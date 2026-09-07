@@ -1,40 +1,48 @@
 {
   "schemaVersion": 1,
-  "datasetVersion": "sample-v3",
+  "datasetVersion": "sample-v4",
   "isSample": true,
-  "publishedAt": "2026-09-04T00:00:00Z",
+  "publishedAt": "2026-09-07T00:00:00Z",
   "funds": [
     {
       "id": "demo-all-country",
       "displayName": "オルカン（サンプル）",
       "currency": "JPY",
-      "path": "funds/demo-all-country.sample-v3.json",
+      "path": "funds/demo-all-country.sample-v4.json",
       "firstDate": "2020-01-06",
-      "lastDate": "2026-09-04"
+      "lastDate": "2026-09-07"
     },
     {
       "id": "demo-sp500",
       "displayName": "S&P500（サンプル）",
       "currency": "JPY",
-      "path": "funds/demo-sp500.sample-v3.json",
+      "path": "funds/demo-sp500.sample-v4.json",
       "firstDate": "2020-01-06",
-      "lastDate": "2026-09-04"
+      "lastDate": "2026-09-07"
     },
     {
       "id": "demo-topix",
       "displayName": "TOPIX（サンプル）",
       "currency": "JPY",
-      "path": "funds/demo-topix.sample-v3.json",
+      "path": "funds/demo-topix.sample-v4.json",
       "firstDate": "2020-01-06",
-      "lastDate": "2026-09-04"
+      "lastDate": "2026-09-07"
     },
     {
       "id": "demo-nasdaq100",
       "displayName": "NASDAQ100（サンプル）",
       "currency": "JPY",
-      "path": "funds/demo-nasdaq100.sample-v3.json",
+      "path": "funds/demo-nasdaq100.sample-v4.json",
       "firstDate": "2020-01-06",
-      "lastDate": "2026-09-04"
+      "lastDate": "2026-09-07"
+    },
+    {
+      "id": "demo-nikkei225",
+      "displayName": "日経平均（サンプル）",
+      "currency": "JPY",
+      "path": "funds/demo-nikkei225.sample-v4.json",
+      "firstDate": "2020-01-06",
+      "lastDate": "2026-09-07"
     }
   ]
 }

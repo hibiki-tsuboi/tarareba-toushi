@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "datasetVersion": "sample-v3",
+  "datasetVersion": "sample-v4",
   "isSample": true,
   "fundId": "demo-topix",
   "currency": "JPY",
@@ -6970,6 +6970,10 @@
     },
     {
       "date": "2026-09-04",
+      "value": "12727.651976"
+    },
+    {
+      "date": "2026-09-07",
       "value": "12727.651976"
     }
   ]

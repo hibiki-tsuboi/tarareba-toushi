@@ -6,11 +6,11 @@ nonisolated enum Fixtures {
     // Final values per fund, in delivered order. Extra funds reuse the last value.
     static func snapshot(
         version: String = "sample-v1", a: String = "12000", b: String = "14000", c: String = "13000",
-        d: String = "16000", mode: DatasetMode = .sample
+        d: String = "16000", e: String = "15000", mode: DatasetMode = .sample
     ) -> DatasetSnapshot {
         let ids = mode.fundIDs
-        let finals = [a, b, c, d]
-        let names = ["オルカン", "S&P500", "TOPIX", "NASDAQ100"]
+        let finals = [a, b, c, d, e]
+        let names = ["オルカン", "S&P500", "TOPIX", "NASDAQ100", "日経平均"]
         let dates = ["2024-12-30", "2025-01-06", "2026-09-04"]
         let funds = ids.enumerated()
             .map { i, id in

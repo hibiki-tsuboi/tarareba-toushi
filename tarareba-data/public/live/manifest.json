@@ -1,8 +1,8 @@
 {
   "schemaVersion": 2,
-  "datasetVersion": "mufg-20260907-e54f7dec0434",
+  "datasetVersion": "mufg-20260907-1a85a97ee659",
   "isSample": false,
-  "publishedAt": "2026-09-07T13:45:38Z",
+  "publishedAt": "2026-09-07T13:50:49Z",
   "funds": [
     {
       "id": "all-country",
@@ -38,6 +38,15 @@
       "path": "funds/nasdaq100.json",
       "contentVersion": "fund-148c06a057220a44a3540be234ed2c7c806173e52022d9f2d8c3c54ae52d2c86",
       "firstDate": "2021-01-29",
+      "lastDate": "2026-09-07"
+    },
+    {
+      "id": "nikkei225",
+      "displayName": "ｅＭＡＸＩＳ Ｓｌｉｍ 国内株式（日経平均）",
+      "currency": "JPY",
+      "path": "funds/nikkei225.json",
+      "contentVersion": "fund-0d4849d2d0a6e8587a915259f67285542ddfc2ce0970c6304e95a1e9306636f8",
+      "firstDate": "2018-02-02",
       "lastDate": "2026-09-07"
     }
   ]
