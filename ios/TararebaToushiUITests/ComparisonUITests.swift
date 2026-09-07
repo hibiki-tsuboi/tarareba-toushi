@@ -7,6 +7,8 @@ final class ComparisonUITests: XCTestCase {
         waitForSimulation(app)
         XCTAssertTrue(app.textFields["investment-amount"].exists)
         XCTAssertTrue(app.datePickers["investment-date"].exists)
+        XCTAssertTrue(app.buttons["fund-all-country"].isSelected)
+        XCTAssertFalse(app.buttons["fund-sp500"].isSelected)
         XCTAssertFalse(app.staticTexts["valuation-all-country"].exists)
         XCTAssertFalse(app.buttons["preset-5"].exists)
         capture(app, name: "simple-input")
@@ -15,8 +17,8 @@ final class ComparisonUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["profit-all-country"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.staticTexts["profit-all-country"].label, "＋200,000円")
         XCTAssertEqual(app.staticTexts["valuation-all-country"].label, "1,200,000円")
-        XCTAssertEqual(app.staticTexts["profit-sp500"].label, "＋400,000円")
-        XCTAssertEqual(app.staticTexts["valuation-sp500"].label, "1,400,000円")
+        XCTAssertFalse(app.staticTexts["profit-sp500"].exists)
+        XCTAssertFalse(app.staticTexts["valuation-sp500"].exists)
         XCTAssertFalse(app.textFields["investment-amount"].exists)
         XCTAssertFalse(app.datePickers["investment-date"].exists)
         XCTAssertFalse(app.buttons["simulate"].exists)
@@ -32,6 +34,37 @@ final class ComparisonUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["valuation-all-country"].waitForExistence(timeout: 5))
     }
 
+    @MainActor func testFundSelectionAndSwitchingAfterReturningToInput() {
+        let app = UITestFixtures.app(mode: "live")
+        app.launch()
+        waitForSimulation(app)
+        app.buttons["fund-sp500"].tap()
+        XCTAssertTrue(app.buttons["fund-sp500"].isSelected)
+        XCTAssertFalse(app.buttons["fund-all-country"].isSelected)
+        XCTAssertFalse(app.staticTexts["valuation-sp500"].exists)
+        waitForSimulation(app)
+        capture(app, name: "fund-selection-input")
+
+        simulate(app)
+        XCTAssertTrue(app.staticTexts["profit-sp500"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["profit-sp500"].label, "＋400,000円")
+        XCTAssertEqual(app.staticTexts["valuation-sp500"].label, "1,400,000円")
+        XCTAssertFalse(app.staticTexts["valuation-all-country"].exists)
+        capture(app, name: "fund-selection-results")
+
+        tapVisible(app.buttons["edit-input"], in: app)
+        XCTAssertTrue(app.buttons["fund-sp500"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["fund-sp500"].isSelected)
+        XCTAssertEqual(app.textFields["investment-amount"].value as? String, "1,000,000")
+        app.buttons["fund-all-country"].tap()
+        XCTAssertTrue(app.buttons["fund-all-country"].isSelected)
+        XCTAssertFalse(app.staticTexts["valuation-all-country"].exists)
+        simulate(app)
+        XCTAssertTrue(app.staticTexts["valuation-all-country"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["valuation-all-country"].label, "1,200,000円")
+        XCTAssertFalse(app.staticTexts["valuation-sp500"].exists)
+    }
+
     @MainActor func testInvalidAmountAndResimulation() {
         let app = UITestFixtures.app()
         app.launch()
@@ -44,22 +77,27 @@ final class ComparisonUITests: XCTestCase {
         XCTAssertTrue(amount.waitForExistence(timeout: 5))
         XCTAssertEqual(amount.value as? String, "1,000,000")
         XCTAssertFalse(valuation.exists)
+        app.buttons["fund-sp500"].tap()
         replaceAmount(in: app, with: "0")
         XCTAssertFalse(app.staticTexts["input-error"].exists)
         simulate(app)
         XCTAssertTrue(app.staticTexts["input-error"].waitForExistence(timeout: 3))
         XCTAssertTrue(amount.exists)
+        XCTAssertTrue(app.buttons["fund-sp500"].isSelected)
         XCTAssertFalse(valuation.exists)
 
         replaceAmount(in: app, with: "2000000")
         XCTAssertFalse(valuation.exists)
         simulate(app)
-        XCTAssertTrue(valuation.waitForExistence(timeout: 5))
-        XCTAssertEqual(valuation.label, "2,400,000円")
-        XCTAssertEqual(app.staticTexts["profit-demo-all-country"].label, "＋400,000円")
+        let selectedValuation = app.staticTexts["valuation-demo-sp500"]
+        XCTAssertTrue(selectedValuation.waitForExistence(timeout: 5))
+        XCTAssertEqual(selectedValuation.label, "2,800,000円")
+        XCTAssertEqual(app.staticTexts["profit-demo-sp500"].label, "＋800,000円")
+        XCTAssertFalse(valuation.exists)
         tapVisible(app.buttons["edit-input"], in: app)
         XCTAssertTrue(amount.waitForExistence(timeout: 5))
         XCTAssertEqual(amount.value as? String, "2,000,000")
+        XCTAssertTrue(app.buttons["fund-sp500"].isSelected)
         XCTAssertFalse(app.staticTexts["input-error"].exists)
     }
 
@@ -72,7 +110,7 @@ final class ComparisonUITests: XCTestCase {
         let profit = app.staticTexts["profit-demo-all-country"]
         XCTAssertTrue(profit.waitForExistence(timeout: 5))
         XCTAssertEqual(profit.label, "0円")
-        XCTAssertEqual(app.staticTexts["profit-demo-sp500"].label, "0円")
+        XCTAssertFalse(app.staticTexts["profit-demo-sp500"].exists)
         XCTAssertEqual(app.staticTexts["valuation-demo-all-country"].label, "1,000,000円")
         app.buttons["data-info"].tap()
         let refresh = app.buttons["refresh-data"]
@@ -93,16 +131,21 @@ final class ComparisonUITests: XCTestCase {
         ]
         app.launch()
         XCTAssertTrue(app.textFields["investment-amount"].waitForExistence(timeout: 10))
+        tapVisible(app.buttons["fund-sp500"], in: app)
+        XCTAssertTrue(app.buttons["fund-sp500"].isSelected)
+        waitForSimulation(app)
         capture(app, name: "simple-accessibility-input")
         simulate(app)
-        XCTAssertTrue(app.staticTexts["profit-demo-all-country"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["profit-demo-sp500"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["profit-demo-all-country"].exists)
         capture(app, name: "simple-accessibility-results")
-        let secondValuation = app.staticTexts["valuation-demo-sp500"]
-        reveal(secondValuation, in: app)
-        XCTAssertEqual(secondValuation.label, "1,400,000円")
+        let valuation = app.staticTexts["valuation-demo-sp500"]
+        reveal(valuation, in: app)
+        XCTAssertEqual(valuation.label, "1,400,000円")
         capture(app, name: "simple-accessibility-results-scrolled")
         tapVisible(app.buttons["edit-input"], in: app)
         XCTAssertTrue(app.textFields["investment-amount"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["fund-sp500"].isSelected)
     }
 
     @MainActor func testLossScenario() {
@@ -113,7 +156,7 @@ final class ComparisonUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["profit-demo-all-country"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.staticTexts["profit-demo-all-country"].label, "−200,000円")
         XCTAssertEqual(app.staticTexts["valuation-demo-all-country"].label, "800,000円")
-        XCTAssertEqual(app.staticTexts["profit-demo-sp500"].label, "−125,000円")
+        XCTAssertFalse(app.staticTexts["profit-demo-sp500"].exists)
         capture(app, name: "simple-loss-results")
     }
 
@@ -138,8 +181,10 @@ final class ComparisonUITests: XCTestCase {
     @MainActor func testDownloadedCacheWorksAfterOfflineRelaunch() {
         let app = UITestFixtures.app(mode: "live")
         app.launch()
+        waitForSimulation(app)
+        app.buttons["fund-sp500"].tap()
         simulate(app)
-        let valuation = app.staticTexts["valuation-all-country"]
+        let valuation = app.staticTexts["valuation-sp500"]
         XCTAssertTrue(valuation.waitForExistence(timeout: 5))
         let value = valuation.label
         app.terminate()
@@ -148,6 +193,7 @@ final class ComparisonUITests: XCTestCase {
         waitForSimulation(app)
         XCTAssertFalse(valuation.exists)
         XCTAssertTrue(app.textFields["investment-amount"].exists)
+        XCTAssertTrue(app.buttons["fund-sp500"].isSelected)
         simulate(app)
         XCTAssertTrue(valuation.waitForExistence(timeout: 5))
         XCTAssertEqual(valuation.label, value)

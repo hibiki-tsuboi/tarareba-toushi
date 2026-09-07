@@ -144,18 +144,39 @@ import Testing
         let defaults = try #require(UserDefaults(suiteName: name))
         defer { defaults.removePersistentDomain(forName: name) }
         let model = ComparisonModel(defaults: defaults)
+        #expect(model.selectedFund == .allCountry)
         model.recalculate(dataset: repo.dataset)
         #expect(model.result?.input.amount == 1_000_000)
+        #expect(model.result?.selectedFund?.id == "demo-all-country")
         model.amountText = "2,000,000"
+        model.selectedFund = .sp500
+        #expect(model.result?.input.fund == .allCountry)
         model.recalculate(dataset: repo.dataset)
-        #expect(model.result?.funds[0].valuation == 2_400_000)
+        #expect(model.result?.selectedFund?.id == "demo-sp500")
+        #expect(model.result?.selectedFund?.valuation == 2_800_000)
         model.amountText = "0"
+        model.selectedFund = .allCountry
         model.recalculate(dataset: repo.dataset)
         #expect(model.result == nil)
         #expect(model.inputError != nil)
         #expect(ComparisonModel(defaults: defaults).amountText == "2,000,000")
+        #expect(ComparisonModel(defaults: defaults).selectedFund == .sp500)
         #expect(await transport.count == 0)
         #expect(model.preset(years: 5, dataset: repo.dataset) == nil)
         #expect(model.preset(years: 1, dataset: repo.dataset)?.rawValue == "2025-09-04")
+    }
+
+    @Test func legacySavedInputKeepsAmountAndDate() throws {
+        let name = "tests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let legacy = Data(#"{"amount":2000000,"requestedDate":"2025-02-03"}"#.utf8)
+        defaults.set(legacy, forKey: "comparison.input.v1")
+
+        let model = ComparisonModel(defaults: defaults)
+        #expect(model.amountText == "2,000,000")
+        #expect(try TradingDay(date: model.selectedDate).rawValue == "2025-02-03")
+        #expect(model.selectedFund == .allCountry)
+        #expect(model.result == nil)
     }
 }

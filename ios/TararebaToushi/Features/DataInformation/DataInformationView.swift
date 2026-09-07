@@ -34,8 +34,8 @@ struct DataInformationView: View {
                 Section {
                     DataNoticeView(mode: repository.configuration.mode)
                     Text(isSample
-                        ? "画面の2商品は比較体験を試すための架空データです。実在する投資信託の基準価額や成績を再現していません。"
-                        : "eMAXIS Slim 全世界株式（オール・カントリー）と、eMAXIS Slim 米国株式（S&P500）を比較します。運用会社の公開データを本アプリ用に加工しています。株価指数そのものの値ではありません。")
+                        ? "選択できる2商品はシミュレーションを試すための架空データです。実在する投資信託の基準価額や成績を再現していません。"
+                        : "eMAXIS Slim 全世界株式（オール・カントリー）と、eMAXIS Slim 米国株式（S&P500）から選んでシミュレーションします。運用会社の公開データを本アプリ用に加工しています。株価指数そのものの値ではありません。")
                 }
                 Section("表示中のデータ") {
                     row("データモード", repository.configuration.mode.label)
@@ -67,8 +67,11 @@ struct DataInformationView: View {
                 }
                 Section("計算のしかた") {
                     Text("評価額 ＝ 元本 × 終了日の系列値 ÷ 開始日の系列値\n損益 ＝ 評価額 − 元本\n損益率 ＝（終了値 ÷ 開始値 − 1）× 100")
-                    Text("指定日以降で両方のデータが揃う最初の日から、最後の共通日までを比較します。履歴開始前の期間は計算できません。")
+                    Text("どちらの商品を選んでも、指定日以降で両方のデータが揃う最初の日から、最後の共通日までで計算します。履歴開始前の期間は計算できません。")
                     if let result {
+                        if let fund = result.selectedFund {
+                            row("選択した投資信託", fund.descriptor.displayName)
+                        }
                         row("指定した日", result.requestedDate.label)
                         row("計算に使用した日", "\(result.startDate.label)〜\(result.endDate.label)")
                     }

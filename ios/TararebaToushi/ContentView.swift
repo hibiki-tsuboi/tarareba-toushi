@@ -52,12 +52,13 @@ struct ContentView: View {
             }
             .sheet(isPresented: $showsInformation) { DataInformationView(repository: repository, result: nil) }
             .navigationDestination(isPresented: $showsResults) {
-                if let result = model.result {
-                    SimulationResultView(result: result, repository: repository)
+                if let result = model.result, let fund = result.selectedFund {
+                    SimulationResultView(result: result, fund: fund, repository: repository)
                 }
             }
             .task { await repository.start(refresh: automaticallyRefreshes) }
             .onChange(of: amountFocused) { _, focused in if !focused { model.finishAmountEditing() } }
+            .onChange(of: model.selectedFund) { _, _ in amountFocused = false }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active, automaticallyRefreshes { Task { await repository.refresh() } }
             }
@@ -74,7 +75,7 @@ struct ContentView: View {
                 .font(.system(.largeTitle, design: .rounded, weight: .bold))
                 .tracking(-0.6)
                 .accessibilityAddTraits(.isHeader)
-            Text("開始日と金額を入れて、結果を見てみよう。")
+            Text("投資信託を選んで、結果を見てみよう。")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
             if repository.configuration.mode == .sample {
@@ -88,6 +89,8 @@ struct ContentView: View {
 
     private var inputCard: some View {
         VStack(alignment: .leading, spacing: 20) {
+            FundPickerView(selection: $model.selectedFund)
+            Divider()
             VStack(alignment: .leading, spacing: 10) {
                 Text("開始日")
                     .font(.subheadline.weight(.medium))
@@ -107,6 +110,7 @@ struct ContentView: View {
                     TextField("1,000,000", text: $model.amountText)
                         .font(.system(.largeTitle, design: .rounded, weight: .semibold))
                         .monospacedDigit()
+                        .minimumScaleFactor(0.4)
                         .keyboardType(.numberPad)
                         .focused($amountFocused)
                         .accessibilityLabel("投資金額")

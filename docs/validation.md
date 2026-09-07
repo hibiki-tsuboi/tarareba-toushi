@@ -1,6 +1,27 @@
 # 実装・検証メモ
 
-確認日：2026-09-06。最新の画面は、開始日・金額を入力してから結果へ進む構成です。
+確認日：2026-09-06。最新の画面は、投資信託を選び、開始日・金額を入力してから1商品の結果へ進む構成です。
+
+## 投資信託の選択
+
+入力画面の先頭にオルカン／S&P500の2択ボタンを追加しました。初期選択はオルカンで、選択中のボタンにはチェックを表示します。結果画面は選んだ商品の増減額と投資後の金額だけを表示します。条件を変更して戻ったときも商品・開始日・金額を保持します。
+
+シミュレーションに成功したときに選択を入力条件と一緒に保存します。旧バージョンの保存データに商品が含まれない場合は、開始日・金額を引き継いでオルカンを選択します。計算には従来と同じ2商品の共通観測日を使います。
+
+Xcode 26.6でビルドとSwift Testingの37テストが成功しました。iPhone 17 Pro / iOS 26.5では9件、iPad mini (A17 Pro) / iOS 26.5 / ダークでは3件のUIテストが成功しています。両商品の結果の選び分け、戻って選択を変えて再計算、無効金額の修正、オフライン再起動での選択復元、以前の保存データの読み込みを確認しました。
+
+文字を最大まで拡大すると2択ボタンを縦に並べ、金額欄は表示幅に合わせて文字サイズを調整します。金額が省略されないことを目視で確認し、調整後のiPhoneの2件・iPadの1件の画面テストも成功しました。
+
+以下の画面記録はUIテストの架空の固定値を使用し、S&P500を選択した例です。
+
+- [iPhone：投資信託の選択](screenshots/iphone-fund-selection-input.png)
+- [iPhone：選んだ商品の結果](screenshots/iphone-fund-selection-results.png)
+- [iPad：投資信託の選択・ダーク](screenshots/ipad-fund-selection-input.png)
+- [iPad：選んだ商品の結果・ダーク](screenshots/ipad-fund-selection-results.png)
+
+検証結果は `/tmp/TararebaFundSelection-iPhone.xcresult` と `/tmp/TararebaFundSelection-iPad.xcresult`、表示調整後の結果は `/tmp/TararebaFundSelection-Layout-iPhone.xcresult` と `/tmp/TararebaFundSelection-Layout-iPad.xcresult` に保存しています。一時ファイルのため恒久保存ではありません。
+
+以下は投資信託の選択を追加する前の検証記録です。
 
 ## 入力と結果画面の分離
 

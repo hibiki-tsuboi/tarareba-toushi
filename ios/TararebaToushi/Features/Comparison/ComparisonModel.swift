@@ -5,6 +5,7 @@ import Observation
 final class ComparisonModel {
     var amountText: String
     var selectedDate: Date
+    var selectedFund: InvestmentFund
     private(set) var result: SimulationResult?
     private(set) var inputError: String?
     @ObservationIgnored private let defaults: UserDefaults
@@ -20,6 +21,7 @@ final class ComparisonModel {
         self.defaults = preferences
         let saved = preferences.data(forKey: "comparison.input.v1")
             .flatMap { try? JSONDecoder().decode(SimulationInput.self, from: $0) }
+        selectedFund = saved?.fund ?? .allCountry
         let amount = saved?.amount ?? AppConfiguration.initialAmount
         amountText = MoneyFormat.number(Decimal(amount))
         // Constants are parsed through the same strict path as remote civil dates.
@@ -43,7 +45,8 @@ final class ComparisonModel {
         do {
             let input = SimulationInput(
                 amount: try MoneyFormat.parseAmount(amountText),
-                requestedDate: try TradingDay(date: selectedDate).rawValue)
+                requestedDate: try TradingDay(date: selectedDate).rawValue,
+                fund: selectedFund)
             result = try SimulationCalculator.calculate(input, dataset: dataset)
             defaults.set(try JSONEncoder().encode(input), forKey: "comparison.input.v1")
         } catch { inputError = error.localizedDescription }

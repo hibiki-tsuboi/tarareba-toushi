@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SimulationResultView: View {
     let result: SimulationResult
+    let fund: FundResult
     let repository: FundRepository
     @State private var showsInformation = false
     @Environment(\.dismiss) private var dismiss
@@ -17,9 +18,7 @@ struct SimulationResultView: View {
                         .font(.subheadline.monospacedDigit())
                         .foregroundStyle(.secondary)
                 }
-                ForEach(Array(result.funds.enumerated()), id: \.element.id) { index, fund in
-                    FundResultCardView(result: fund, index: index)
-                }
+                FundResultCardView(result: fund, index: result.input.fund == .sp500 ? 1 : 0)
                 Text(result.isSample
                     ? "サンプルデータによる概算です。実際の運用実績ではありません。"
                     : "過去のデータによる概算です。税金・購入手数料等は含みません。")

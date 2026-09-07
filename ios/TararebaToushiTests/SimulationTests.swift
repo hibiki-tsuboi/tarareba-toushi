@@ -4,6 +4,19 @@ import Testing
 @testable import TararebaToushi
 
 struct SimulationTests {
+    @Test(arguments: [DatasetMode.live, .sample], InvestmentFund.allCases)
+    func selectionResolvesTheCorrectFund(mode: DatasetMode, fund: InvestmentFund) throws {
+        let dataset = try DatasetValidator.validate(Fixtures.snapshot(mode: mode), mode: mode)
+        let input = SimulationInput(amount: 1_000_000, requestedDate: "2025-01-01", fund: fund)
+        let result = try SimulationCalculator.calculate(input, dataset: dataset)
+        let selected = try #require(result.selectedFund)
+        let expectedID = fund == .allCountry ? "all-country" : "sp500"
+        #expect(selected.id == (mode == .sample ? "demo-" : "") + expectedID)
+        #expect(selected.displayedValuation == (fund == .allCountry ? 1_200_000 : 1_400_000))
+        #expect(selected.displayedProfit == (fund == .allCountry ? 200_000 : 400_000))
+        #expect(result.startDate.rawValue == "2025-01-06")
+    }
+
     @Test func expectedReturnsAndDifference() throws {
         let result = try SimulationCalculator.calculate(
             .init(amount: 1_000_000, requestedDate: "2025-01-01"), dataset: Fixtures.validated())
