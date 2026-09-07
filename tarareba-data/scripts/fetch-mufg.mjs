@@ -25,7 +25,10 @@ export const funds = [
         page: 'https://emaxis.am.mufg.jp/fund/253144.html' },
     { id: 'gold', code: '251065', associationCode: '03311112', isin: 'JP90C0007G10',
         name: '三菱ＵＦＪ 純金ファンド', start: '2011-02-07',
-        page: 'https://www.am.mufg.jp/fund/251065.html' }
+        page: 'https://www.am.mufg.jp/fund/251065.html' },
+    { id: 'emerging', code: '252878', associationCode: '0331C177', isin: 'JP90C000F7H5',
+        name: 'ｅＭＡＸＩＳ Ｓｌｉｍ 新興国株式インデックス', start: '2017-07-31',
+        page: 'https://emaxis.am.mufg.jp/fund/252878.html' }
 ];
 export const latestURL = fund => `https://developer.am.mufg.jp/fund_information_latest/association_fund_cd/${fund.associationCode}`;
 export const datedURL = (fund, date) => {

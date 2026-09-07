@@ -1,8 +1,8 @@
 {
   "schemaVersion": 2,
-  "datasetVersion": "mufg-20260907-510223b79fbf",
+  "datasetVersion": "mufg-20260907-5fc4b6f9839c",
   "isSample": false,
-  "publishedAt": "2026-09-07T14:27:02Z",
+  "publishedAt": "2026-09-07T14:49:43Z",
   "funds": [
     {
       "id": "all-country",
@@ -56,6 +56,15 @@
       "path": "funds/gold.json",
       "contentVersion": "fund-9bf29031e5cd0b741cc851cb4ee17d281f17bcc3b7cc814f67278f6e586067f3",
       "firstDate": "2011-02-07",
+      "lastDate": "2026-09-07"
+    },
+    {
+      "id": "emerging",
+      "displayName": "ｅＭＡＸＩＳ Ｓｌｉｍ 新興国株式インデックス",
+      "currency": "JPY",
+      "path": "funds/emerging.json",
+      "contentVersion": "fund-51f45f3baa0ba04374e33af5ba99ed4d3e355736328e26c6d9f41272711fe949",
+      "firstDate": "2017-07-31",
       "lastDate": "2026-09-07"
     }
   ]

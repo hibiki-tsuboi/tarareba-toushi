@@ -3,11 +3,12 @@ import SwiftUI
 enum AppPalette {
     static let teal = Color("InvestmentTeal")
     static let blue = Color("InvestmentBlue")
-    // Hues stay far apart so up to six lines and figures remain tellable apart.
+    // Hues stay far apart so up to seven lines and figures remain tellable apart:
+    // 35° 81° 127° 178° 222° 269° 335°, never closer than 43°.
     // Appended, never reordered: the index decides a fund's colour.
     static let seriesColors = [
         teal, blue, Color("InvestmentViolet"), Color("InvestmentAmber"), Color("InvestmentRose"),
-        Color("InvestmentGreen"),
+        Color("InvestmentGreen"), Color("InvestmentLime"),
     ]
     static func series(_ index: Int) -> Color {
         seriesColors[min(max(index, 0), seriesColors.count - 1)]

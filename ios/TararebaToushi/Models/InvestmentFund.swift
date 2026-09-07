@@ -7,6 +7,7 @@ nonisolated enum InvestmentFund: String, CaseIterable, Codable, Identifiable, Se
     case nasdaq100 = "nasdaq100"
     case nikkei225 = "nikkei225"
     case gold = "gold"
+    case emerging = "emerging"
 
     var id: String { rawValue }
 
@@ -18,6 +19,7 @@ nonisolated enum InvestmentFund: String, CaseIterable, Codable, Identifiable, Se
         case .nasdaq100: "NASDAQ100"
         case .nikkei225: "日経平均"
         case .gold: "純金"
+        case .emerging: "新興国株"
         }
     }
 

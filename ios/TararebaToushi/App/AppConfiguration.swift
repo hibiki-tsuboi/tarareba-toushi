@@ -6,8 +6,9 @@ nonisolated enum DatasetMode: String, Codable, Sendable {
     var fundIDs: [String] {
         switch self {
         case .sample:
-            ["demo-all-country", "demo-sp500", "demo-topix", "demo-nasdaq100", "demo-nikkei225", "demo-gold"]
-        case .live: ["all-country", "sp500", "topix", "nasdaq100", "nikkei225", "gold"]
+            ["demo-all-country", "demo-sp500", "demo-topix", "demo-nasdaq100", "demo-nikkei225",
+                "demo-gold", "demo-emerging"]
+        case .live: ["all-country", "sp500", "topix", "nasdaq100", "nikkei225", "gold", "emerging"]
         }
     }
 
@@ -24,7 +25,7 @@ nonisolated struct AppConfiguration: Sendable {
     static let snapshotStorageVersion = 1
     static let maximumAmount = 1_000_000_000
     // A comparison stays legible while the series stay visually distinct.
-    static let maximumComparisonFunds = 6
+    static let maximumComparisonFunds = 7
     static let defaultComparisonFunds = 2
     static let initialAmount = 1_000_000
     static let initialDate = "2025-01-01"
