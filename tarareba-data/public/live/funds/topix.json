@@ -9318,7 +9318,11 @@
     {
       "date": "2026-09-04",
       "value": "32676"
+    },
+    {
+      "date": "2026-09-07",
+      "value": "32855"
     }
   ],
-  "datasetVersion": "fund-a213fd931f64c4a1d0e3d5349cd4d06d126231426cf7dafe23d230e28fe268f5"
+  "datasetVersion": "fund-6902515358168781a9ce2006d3e34d69f38d5e50556764995785e1ba3c04b8ff"
 }

@@ -7662,7 +7662,11 @@
     {
       "date": "2026-09-04",
       "value": "37945"
+    },
+    {
+      "date": "2026-09-07",
+      "value": "38002"
     }
   ],
-  "datasetVersion": "fund-c121496d2b9e8953360900e44c4eda56dc9a0c6a7840dbd65aa0eb1754d1b6db"
+  "datasetVersion": "fund-7bd6b7dadf1a8d23f852d2eea31963249b8f2119ebdc4d6f150ce5c1fa7c31b1"
 }

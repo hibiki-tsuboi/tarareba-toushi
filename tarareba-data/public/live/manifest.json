@@ -1,44 +1,44 @@
 {
   "schemaVersion": 2,
-  "datasetVersion": "mufg-20260904-1bb8ad5deb2e",
+  "datasetVersion": "mufg-20260907-e54f7dec0434",
   "isSample": false,
-  "publishedAt": "2026-09-07T09:47:09Z",
+  "publishedAt": "2026-09-07T13:45:38Z",
   "funds": [
     {
       "id": "all-country",
       "displayName": "eMAXIS Slim 全世界株式（オール・カントリー）",
       "currency": "JPY",
       "path": "funds/all-country.json",
-      "contentVersion": "fund-c121496d2b9e8953360900e44c4eda56dc9a0c6a7840dbd65aa0eb1754d1b6db",
+      "contentVersion": "fund-7bd6b7dadf1a8d23f852d2eea31963249b8f2119ebdc4d6f150ce5c1fa7c31b1",
       "firstDate": "2018-10-31",
-      "lastDate": "2026-09-04"
+      "lastDate": "2026-09-07"
     },
     {
       "id": "sp500",
       "displayName": "eMAXIS Slim 米国株式（S&P500）",
       "currency": "JPY",
       "path": "funds/sp500.json",
-      "contentVersion": "fund-2d015ece91b0d386a3e07625ad1cae8ecfd62ec9b55e83ca7e57bbbc1b1e3b2d",
+      "contentVersion": "fund-490e6d12f105d383234107913777f6dcfaa5f4b63110696b9684bada55af40ad",
       "firstDate": "2018-07-03",
-      "lastDate": "2026-09-04"
+      "lastDate": "2026-09-07"
     },
     {
       "id": "topix",
       "displayName": "ｅＭＡＸＩＳ Ｓｌｉｍ 国内株式（ＴＯＰＩＸ）",
       "currency": "JPY",
       "path": "funds/topix.json",
-      "contentVersion": "fund-a213fd931f64c4a1d0e3d5349cd4d06d126231426cf7dafe23d230e28fe268f5",
+      "contentVersion": "fund-6902515358168781a9ce2006d3e34d69f38d5e50556764995785e1ba3c04b8ff",
       "firstDate": "2017-02-27",
-      "lastDate": "2026-09-04"
+      "lastDate": "2026-09-07"
     },
     {
       "id": "nasdaq100",
       "displayName": "ｅＭＡＸＩＳ ＮＡＳＤＡＱ１００インデックス",
       "currency": "JPY",
       "path": "funds/nasdaq100.json",
-      "contentVersion": "fund-8d7efcb1d4799b7288648c6e61fb07c0e8105633d4c873aa98c085a023440753",
+      "contentVersion": "fund-148c06a057220a44a3540be234ed2c7c806173e52022d9f2d8c3c54ae52d2c86",
       "firstDate": "2021-01-29",
-      "lastDate": "2026-09-04"
+      "lastDate": "2026-09-07"
     }
   ]
 }
