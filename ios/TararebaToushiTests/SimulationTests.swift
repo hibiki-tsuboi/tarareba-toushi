@@ -4,16 +4,19 @@ import Testing
 @testable import TararebaToushi
 
 struct SimulationTests {
-    @Test(arguments: [DatasetMode.live, .sample], InvestmentFund.allCases)
-    func selectionResolvesTheCorrectFund(mode: DatasetMode, fund: InvestmentFund) throws {
-        let dataset = try DatasetValidator.validate(Fixtures.snapshot(mode: mode), mode: mode)
-        let input = SimulationInput(amount: 1_000_000, requestedDate: "2025-01-01", fund: fund)
+    @Test(arguments: [DatasetMode.live, .sample])
+    func comparisonUsesTheFullAmountForBothFundsInFixedOrder(mode: DatasetMode) throws {
+        var snapshot = Fixtures.snapshot(mode: mode)
+        snapshot.manifest.funds.reverse()
+        snapshot.series.reverse()
+        let dataset = try DatasetValidator.validate(snapshot, mode: mode)
+        let input = SimulationInput(amount: 1_000_000, requestedDate: "2025-01-01")
         let result = try SimulationCalculator.calculate(input, dataset: dataset)
-        let selected = try #require(result.selectedFund)
-        let expectedID = fund == .allCountry ? "all-country" : "sp500"
-        #expect(selected.id == (mode == .sample ? "demo-" : "") + expectedID)
-        #expect(selected.displayedValuation == (fund == .allCountry ? 1_200_000 : 1_400_000))
-        #expect(selected.displayedProfit == (fund == .allCountry ? 200_000 : 400_000))
+        #expect(result.funds.map(\.id) == mode.fundIDs)
+        #expect(result.funds.map(\.displayedValuation) == [1_200_000, 1_400_000])
+        #expect(result.funds.map(\.displayedProfit) == [200_000, 400_000])
+        #expect(result.funds.allSatisfy { $0.points.first?.amount == 1_000_000 })
+        #expect(result.funds[0].points.map(\.day) == result.funds[1].points.map(\.day))
         #expect(result.startDate.rawValue == "2025-01-06")
     }
 

@@ -52,13 +52,12 @@ struct ContentView: View {
             }
             .sheet(isPresented: $showsInformation) { DataInformationView(repository: repository, result: nil) }
             .navigationDestination(isPresented: $showsResults) {
-                if let result = model.result, let fund = result.selectedFund {
-                    SimulationResultView(result: result, fund: fund, repository: repository)
+                if let result = model.result {
+                    SimulationResultView(result: result, repository: repository)
                 }
             }
             .task { await repository.start(refresh: automaticallyRefreshes) }
             .onChange(of: amountFocused) { _, focused in if !focused { model.finishAmountEditing() } }
-            .onChange(of: model.selectedFund) { _, _ in amountFocused = false }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active, automaticallyRefreshes { Task { await repository.refresh() } }
             }
@@ -75,7 +74,7 @@ struct ContentView: View {
                 .font(.system(.largeTitle, design: .rounded, weight: .bold))
                 .tracking(-0.6)
                 .accessibilityAddTraits(.isHeader)
-            Text("投資信託を選んで、結果を見てみよう。")
+            Text("同じ条件で、オルカンとS&P500を比べてみよう。")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
             if repository.configuration.mode == .sample {
@@ -89,8 +88,6 @@ struct ContentView: View {
 
     private var inputCard: some View {
         VStack(alignment: .leading, spacing: 20) {
-            FundPickerView(selection: $model.selectedFund)
-            Divider()
             VStack(alignment: .leading, spacing: 10) {
                 Text("開始日")
                     .font(.subheadline.weight(.medium))
@@ -119,6 +116,10 @@ struct ContentView: View {
                         .font(.title3)
                         .foregroundStyle(.secondary)
                 }
+                Text("それぞれに同じ金額を投資した場合を比較します。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .cardSurface()
@@ -131,7 +132,7 @@ struct ContentView: View {
             model.recalculate(dataset: repository.dataset)
             if model.result != nil { showsResults = true }
         } label: {
-            Text("シミュレート")
+            Text("2つを比較する")
                 .font(.headline)
                 .foregroundStyle(Color(uiColor: .systemBackground))
                 .frame(maxWidth: .infinity)

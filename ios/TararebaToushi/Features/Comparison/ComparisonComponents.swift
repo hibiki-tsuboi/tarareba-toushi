@@ -42,9 +42,10 @@ struct FundResultCardView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(result.descriptor.displayName)
+            Text(result.shortName)
                 .font(.subheadline.weight(.semibold))
                 .fixedSize(horizontal: false, vertical: true)
+                .accessibilityLabel(result.descriptor.displayName)
             VStack(alignment: .leading, spacing: 6) {
                 Text("増減額")
                     .font(.caption)
@@ -80,25 +81,34 @@ struct FundResultCardView: View {
 
 struct DifferenceCardView: View {
     let result: SimulationResult
-    private var winner: String? {
+    private var higherFund: String? {
         guard result.displayedDifference != 0 else { return nil }
-        return result.funds[result.displayedDifference > 0 ? 1 : 0].descriptor.displayName
+        return result.funds[result.displayedDifference > 0 ? 1 : 0].shortName
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label("この条件での差額", systemImage: "arrow.left.arrow.right").font(.subheadline.weight(.medium))
-            Text(MoneyFormat.yen(abs(result.displayedDifference)))
-                .font(.system(.largeTitle, design: .rounded, weight: .bold)).monospacedDigit()
-                .minimumScaleFactor(0.65).lineLimit(1).accessibilityIdentifier("comparison-difference")
-            Text(winner.map { "この期間では、\($0)のほうが多い結果でした。" } ?? "表示上の差額は0円。同じ結果でした。")
-                .font(.subheadline).fixedSize(horizontal: false, vertical: true)
-            Text(result.isSample ? "架空のサンプルによる比較です" : "過去のデータによる比較です。将来の成果を保証しません。")
-                .font(.caption).opacity(0.85)
+        VStack(alignment: .leading, spacing: 8) {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline, spacing: 12) { difference }
+                VStack(alignment: .leading, spacing: 8) { difference }
+            }
+            Text(higherFund.map { "この期間では、\($0)のほうが多い結果でした。" }
+                ?? "表示上の差額は0円。同じ結果でした。")
+                .font(.subheadline)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("comparison-summary")
         }
-        .foregroundStyle(.white)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(22)
-        .background(Color(red: 0.08, green: 0.28, blue: 0.3), in: RoundedRectangle(cornerRadius: 24))
+        .cardSurface()
+    }
+
+    @ViewBuilder private var difference: some View {
+        Text("この期間の差額")
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+        Text(MoneyFormat.yen(abs(result.displayedDifference)))
+            .font(.system(.title3, design: .rounded, weight: .bold))
+            .monospacedDigit()
+            .accessibilityIdentifier("comparison-difference")
     }
 }

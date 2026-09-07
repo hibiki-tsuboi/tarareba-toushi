@@ -27,23 +27,19 @@ final class PublishedDataUITests: XCTestCase {
         let allCountry = app.staticTexts["valuation-all-country"]
         XCTAssertTrue(allCountry.waitForExistence(timeout: 5))
         XCTAssertEqual(allCountry.label, expected.allCountryValuation)
-        capture(app, name: "published-nav-all-country")
-
-        app.buttons["edit-input"].tap()
-        app.buttons["fund-sp500"].tap()
-        app.buttons["simulate"].tap()
         let sp500 = app.staticTexts["valuation-sp500"]
         XCTAssertTrue(sp500.waitForExistence(timeout: 5))
         XCTAssertEqual(sp500.label, expected.sp500Valuation)
-        capture(app, name: "published-nav-sp500")
+        capture(app, name: "published-nav-comparison")
 
         app.terminate()
         app.launchEnvironment["TARAREBA_TEST_OFFLINE"] = "1"
         app.launch()
         waitForSimulation(app)
-        XCTAssertTrue(app.buttons["fund-sp500"].isSelected)
         verifyVersion(expected.version, in: app)
         app.buttons["simulate"].tap()
+        XCTAssertTrue(allCountry.waitForExistence(timeout: 5))
+        XCTAssertEqual(allCountry.label, expected.allCountryValuation)
         XCTAssertTrue(sp500.waitForExistence(timeout: 5))
         XCTAssertEqual(sp500.label, expected.sp500Valuation)
         capture(app, name: "published-nav-offline")

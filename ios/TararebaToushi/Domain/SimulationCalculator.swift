@@ -3,7 +3,6 @@ import Foundation
 nonisolated struct SimulationInput: Codable, Sendable {
     var amount: Int
     var requestedDate: String
-    var fund: InvestmentFund? = nil
 }
 
 nonisolated struct ValuationPoint: Identifiable, Sendable {
@@ -21,6 +20,14 @@ nonisolated struct FundResult: Identifiable, Sendable {
     let returnPercent: Decimal
     let displayedValuation: Decimal
     let displayedProfit: Decimal
+
+    var shortName: String {
+        let fund = InvestmentFund.allCases.first {
+            id == $0.dataID(isSample: false) || id == $0.dataID(isSample: true)
+        }
+        guard let fund else { return descriptor.displayName }
+        return fund.displayName + (id.hasPrefix("demo-") ? "（サンプル）" : "")
+    }
 }
 
 nonisolated struct SimulationResult: Sendable {
@@ -31,11 +38,6 @@ nonisolated struct SimulationResult: Sendable {
     let endDate: TradingDay
     let funds: [FundResult]
     let displayedDifference: Decimal
-
-    var selectedFund: FundResult? {
-        let id = (input.fund ?? .allCountry).dataID(isSample: isSample)
-        return funds.first { $0.id == id }
-    }
 }
 
 nonisolated enum ComparisonDateResolver {

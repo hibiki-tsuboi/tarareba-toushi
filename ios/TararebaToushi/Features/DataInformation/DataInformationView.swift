@@ -34,8 +34,8 @@ struct DataInformationView: View {
                 Section {
                     DataNoticeView(mode: repository.configuration.mode)
                     Text(isSample
-                        ? "選択できる2商品はシミュレーションを試すための架空データです。実在する投資信託の基準価額や成績を再現していません。"
-                        : "eMAXIS Slim 全世界株式（オール・カントリー）と、eMAXIS Slim 米国株式（S&P500）から選んでシミュレーションします。運用会社の公開データを本アプリ用に加工しています。株価指数そのものの値ではありません。")
+                        ? "比較する2商品はシミュレーションを試すための架空データです。実在する投資信託の基準価額や成績を再現していません。"
+                        : "eMAXIS Slim 全世界株式（オール・カントリー）と、eMAXIS Slim 米国株式（S&P500）を同じ条件で比較します。運用会社の公開データを本アプリ用に加工しています。株価指数そのものの値ではありません。")
                 }
                 if !isSample {
                     Section("公表値とシミュレーション結果") {
@@ -76,11 +76,10 @@ struct DataInformationView: View {
                     Text(isSample
                         ? "評価額 ＝ 元本 × 終了日の系列値 ÷ 開始日の系列値\n損益 ＝ 評価額 − 元本\n損益率 ＝（終了値 ÷ 開始値 − 1）× 100"
                         : "評価額 ＝ 元本 × 終了日の基準価額 ÷ 開始日の基準価額\n損益 ＝ 評価額 − 元本\n損益率 ＝（終了日の基準価額 ÷ 開始日の基準価額 − 1）× 100")
-                    Text("どちらの商品を選んでも、指定日以降で両方のデータが揃う最初の日から、最後の共通日までで計算します。履歴開始前の期間は計算できません。")
+                    Text("入力金額をそれぞれの商品に全額投資した場合を比較します。2商品への分割投資ではありません。指定日以降で両方のデータが揃う最初の日から、最後の共通日までで計算します。履歴開始前の期間は計算できません。")
                     if let result {
-                        if let fund = result.selectedFund {
-                            row("選択した投資信託", fund.descriptor.displayName)
-                        }
+                        row("比較する投資信託", result.funds.map(\.descriptor.displayName).joined(separator: "\n"))
+                        row("それぞれの投資金額", MoneyFormat.yen(Decimal(result.input.amount)))
                         row("指定した日", result.requestedDate.label)
                         row("算出基準日", result.endDate.label)
                         row("計算に使用した日", "\(result.startDate.label)〜\(result.endDate.label)")
