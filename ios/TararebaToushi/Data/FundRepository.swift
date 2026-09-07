@@ -56,8 +56,14 @@ final class FundRepository {
     }
 
     var isStale: Bool {
+        if needsNAVSnapshotUpdate { return true }
         guard let checkedAt else { return true }
         return now().timeIntervalSince(checkedAt) >= configuration.refreshInterval
+    }
+
+    private var needsNAVSnapshotUpdate: Bool {
+        configuration.mode == .live
+            && dataset?.snapshot.series.contains(where: { $0.valueBasis != "nav" }) == true
     }
 
     func start(refresh: Bool = true) async {
@@ -85,7 +91,7 @@ final class FundRepository {
 
     func refresh(force: Bool = false) async {
         guard started, !isLoading, !isRefreshing else { return }
-        if !force, let checkedAt {
+        if !force, !needsNAVSnapshotUpdate, let checkedAt {
             let age = now().timeIntervalSince(checkedAt)
             if age >= 0, age < configuration.refreshInterval { return }
         }

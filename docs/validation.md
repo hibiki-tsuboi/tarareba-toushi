@@ -2,6 +2,25 @@
 
 確認日：2026-09-07。最新の画面は、投資信託を選び、開始日・金額を入力してから1商品の結果へ進む構成です。
 
+## 公開済み通常基準価額へのアプリ更新
+
+利用者によるデプロイ後、`publish:verify` で公開manifestと2履歴が `mufg-20260904-c18ad9a40cee` のローカルJSONと一致することを確認しました。アプリは旧形式の実データを保存している場合、前回の確認成功から6時間以内でも起動・復帰時に更新を確認します。取得失敗時は保存済みデータを保持して次回に再試行し、新版への更新後は通常の6時間間隔に戻ります。
+
+iPhone 17 Pro・iPad mini (A17 Pro) / iOS 26.5で、Swift Testingの42テストと対象UIテスト2件が成功しました（パラメータ展開を含め各端末78実行、計156実行）。旧形式からの即時更新、失敗時の保持と再試行、新形式での更新間隔を追加検証しています。
+
+公開版のUIテストでは、空の専用保存先からアプリの実際のHTTP通信でCloudflareのデータを取得しました。情報画面の版番号、両商品の評価額、オフライン再起動後の保存データと商品選択を確認しています。100万円・指定日2025-01-01（計算開始2025-01-06）・終了2026-09-04では、オルカン1,381,174円、S&P500 1,308,418円でした。iPhoneのライト・iPadのダーク表示も目視確認しました。三菱UFJのAPIによる過去データの再取得は行っていません。
+
+結果は `/tmp/TararebaPublishedNAV-20260907.xcresult`、画面記録は `/tmp/tarareba-published-nav-screenshots/` に保存しています（一時ファイル）。公開版のUIテストは通常のテスト実行ではスキップし、次のように期待する版・条件・評価額を指定した場合だけ通信します。将来の公開版を確認するときは、期待値もその版に合わせて更新してください。
+
+```sh
+TEST_RUNNER_TARAREBA_PUBLISHED_EXPECTATION='{"version":"mufg-20260904-c18ad9a40cee","date":"2025-01-01","amount":"1,000,000","allCountryValuation":"1,381,174円","sp500Valuation":"1,308,418円"}' \
+xcodebuild -project ios/TararebaToushi.xcodeproj \
+  -scheme TararebaToushi -configuration Debug \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.5' \
+  -derivedDataPath /tmp/TararebaToushiDerivedData \
+  -only-testing:TararebaToushiUITests/PublishedDataUITests test
+```
+
 ## APIのみの取得と通常基準価額への移行
 
 今後の取得は投信情報APIだけに変更しました。保存済み最終日の翌日から不足分を日付指定APIで取得し、履歴がない場合の全取得は `--backfill` の明示が必要です。観測値は日付・通常基準価額だけを持ち、CSVの取得・解析と分配金再投資系列の新規生成を削除しました。画面には分配金の受取額・再投資を計算に含めない旨を表示しています。
