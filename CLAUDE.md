@@ -75,7 +75,7 @@ npm run dev                 # wrangler dev（public/ をローカル配信して
 ### データの流れ
 
 ```
-三菱UFJ 投信情報API
+三菱UFJ 投信情報API（日次） / 設定来CSV（新商品の初回のみ）
   └ scripts/fetch-mufg.mjs      日付+通常基準価額(nav)だけを抽出・照合
       └ public/live/manifest.json + public/live/funds/<id>.json   （固定URL・上書き）
           └ Cloudflare Workers Static Assets (wrangler.jsonc → ./public)
@@ -96,7 +96,7 @@ npm run dev                 # wrangler dev（public/ をローカル配信して
 
 ### 取得ロジック（`scripts/fetch-mufg.mjs`）
 
-- 保存済み履歴のない商品があれば、その商品IDを挙げて**通信前に停止**します。設定来の全取得だけ `npm run fetch:mufg -- --backfill` を明示。`funds` に商品を足したときも同じ経路で、**保存済みの商品は取り直しません**（新商品だけ設定来から取得）。
+- 保存済み履歴のない商品があれば、その商品IDを挙げて**通信前に停止**します。設定来の取り込みだけ `npm run fetch:mufg -- --backfill` を明示。取り込みは**CSV 1リクエスト**で、日付指定APIを設定来ぶん叩くことはありません。`funds` に商品を足したときも同じ経路で、**保存済みの商品は取り直しません**。
 - 通常は2商品の最新値APIを確認し、保存済み最終日の翌日から不足日だけ日付指定APIで取得。既存の過去日は再取得しません。最新日が同じなら値の訂正だけ末尾へ反映します。
 - 「その日の観測なし」と扱えるのは **HTTP 200・`result.status===200`・`errcd`なし・`errors.count===0`・`retcount===0`・空配列** が揃った場合のみ。HTTPエラーやAPIエラーを休日扱いにしてはいけません。補間もしません。
 - 通信はHTTPS・リダイレクト拒否・20秒・2MiB上限・直列（2回目以降は1秒待機）。
@@ -124,7 +124,7 @@ npm run dev                 # wrangler dev（public/ をローカル配信して
 ## 変更時に守ること
 
 - **アプリに価格データを同梱しない。** `ios/TararebaToushi/` 配下（`.xcassets` を除く）に `.json` / `.jsonc` / `.csv` があると `npm run validate` と `verify:app` が失敗します。テスト用フィクスチャはテストターゲット内、UIテストの応答はランナーの環境変数（`--ui-testing` + `TARAREBA_TEST_*`）で渡します。
-- **取得元はAPIのみ。** CSVの取得・解析、再投資基準価額や税引前分配金の保存はしません。信託報酬の再控除もしません。
+- **日々の更新はAPIのみ。** CSVを使うのは、保存済み履歴のない商品を設定来CSV（`fund_file/setteirai/<コード>.csv`・Shift_JIS）から1回だけ取り込むときに限ります。取り込み後は最終日と、等間隔に選んだ最大20日を日付指定APIと照合し、1件でも食い違えば書き込みません。既存商品の履歴をCSVで上書きする経路はありません。**再投資基準価額・税引前分配金は書式を検証するだけで保存しません。** 信託報酬の再控除もしません。
 - **既存の日付と値は書き換えない。** 補間・丸め直し・株価指数の接ぎ足しをせず、選択商品の共通観測日だけで計算します。
 - `DatasetValidator.supportsValueBasis` の `reinvestedIndex` 許可は、2026-09-07に通常基準価額と同値だと監査した版（`mufg-20260904-6c4cf880560d`）の**商品別ハッシュ一致時のみ**です。未確認の再投資系列を通常基準価額として扱ってはいけません。
 - 認証情報（`CLOUDFLARE_API_TOKEN` など）をiOSアプリ・`public/`・ソース・チャットに入れないこと。`.dev.vars*` / `.env*` はgitignore済み。

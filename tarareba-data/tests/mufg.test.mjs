@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
-import { funds, latestURL, datedURL, parseFundInformation, createSnapshot, writeSnapshot, fetchBytes,
-    updateFromMufg, readSnapshot } from '../scripts/fetch-mufg.mjs';
+import { funds, latestURL, datedURL, csvURL, csvHeaders, parseFundInformation, parseMufgCSV,
+    createSnapshot, writeSnapshot, fetchBytes, updateFromMufg, readSnapshot } from '../scripts/fetch-mufg.mjs';
 import { validate } from '../scripts/contract.mjs';
 
 // Fictional API responses; these tests never contact the provider.
@@ -20,7 +20,75 @@ const payload = (fund, date = '2025-01-07', nav = 9900) => ({
 });
 const empty = () => ({ result: { status: 200, retcount: 0, errcd: null }, errors: { count: 0 }, datasets: [] });
 const options = { wait: async () => {}, today: '2026-09-07' };
+const nextDays = (date, count) =>
+    new Date(Date.parse(`${date}T12:00:00Z`) + count * 86_400_000).toISOString().slice(0, 10);
 const response = value => new Response(JSON.stringify(value), { headers: { 'content-type': 'application/json' } });
+// The provider serves Shift_JIS; only the characters used by these fixtures are mapped.
+const sjis = {
+    'の': [130, 204],
+    'オ': [131, 73],
+    'カ': [131, 74],
+    'ス': [131, 88],
+    'テ': [131, 101],
+    'ト': [131, 103],
+    'リ': [131, 138],
+    'ル': [131, 139],
+    'ン': [131, 147],
+    '・': [129, 69],
+    'ー': [129, 91],
+    '世': [144, 162],
+    '価': [137, 191],
+    '億': [137, 173],
+    '全': [145, 83],
+    '内': [147, 224],
+    '円': [137, 126],
+    '再': [141, 196],
+    '分': [149, 170],
+    '前': [145, 79],
+    '加': [137, 193],
+    '品': [149, 105],
+    '商': [143, 164],
+    '国': [141, 145],
+    '基': [138, 238],
+    '専': [144, 234],
+    '式': [142, 174],
+    '引': [136, 248],
+    '投': [147, 138],
+    '日': [147, 250],
+    '株': [138, 148],
+    '準': [143, 128],
+    '産': [142, 89],
+    '用': [151, 112],
+    '界': [138, 69],
+    '税': [144, 197],
+    '米': [149, 196],
+    '純': [143, 131],
+    '総': [145, 141],
+    '資': [142, 145],
+    '追': [146, 199],
+    '配': [148, 122],
+    '金': [139, 224],
+    '額': [138, 122],
+    '（': [129, 105],
+    '）': [129, 106],
+    'Ａ': [130, 96],
+    'Ｉ': [130, 104],
+    'Ｍ': [130, 108],
+    'Ｏ': [130, 110],
+    'Ｐ': [130, 111],
+    'Ｓ': [130, 114],
+    'Ｔ': [130, 115],
+    'Ｘ': [130, 119],
+    'ｅ': [130, 133],
+    'ｉ': [130, 137],
+    'ｌ': [130, 140],
+    'ｍ': [130, 141]
+};
+const encodeSJIS = text => Uint8Array.from([...text].flatMap(c => sjis[c] ?? [c.codePointAt(0)]));
+const csv = (fund, rows) => new Response(
+    encodeSJIS([fund.name, csvHeaders.join(','),
+        ...rows.map(([date, nav]) => `${date.replaceAll('-', '/')},${nav},${nav},,1.00`)].join('\r\n')),
+    { headers: { 'content-type': 'text/csv' } });
 
 async function folder(t, snapshot = createSnapshot(histories())) {
     const root = await mkdtemp(resolve(tmpdir(), 'tarareba-nav-'));
@@ -136,8 +204,8 @@ test('missing or incompatible local history fails before any request; initial ba
     assert.equal(requests, 0);
 });
 
-test('adding a fund needs an explicit backfill and never refetches the saved ones', async t => {
-    // The extra fund stands in for a product added to the catalogue later.
+test('adding a fund imports its history from one CSV and never refetches the saved ones', async t => {
+    // Stands in for a product added to the catalogue later.
     const added = { id: 'topix', code: '000000', associationCode: '0000000A', isin: 'JP90C0000000',
         name: 'テスト専用の追加商品', start: '2025-01-06' };
     const root = await folder(t);
@@ -150,26 +218,29 @@ test('adding a fund needs an explicit backfill and never refetches the saved one
     await assert.rejects(updateFromMufg(root, refuse, options), /--backfill/);
     assert.equal(blocked, 0, 'requests must not start before the missing fund is acknowledged');
 
+    const history = [['2025-01-06', '10000'], ['2025-01-07', '10100'], ['2025-01-08', '10200']];
     const requests = [];
     const fetcher = async url => {
         requests.push(url);
+        if (url === csvURL(added)) return csv(added, history);
         const fund = funds.find(f => url.includes(f.associationCode));
         if (url === latestURL(fund)) return response(payload(fund, '2025-01-08', 10200));
         const date = url.match(/base_date\/(\d{4})(\d{2})(\d{2})$/).slice(1).join('-');
-        return response(payload(fund, date, 10100));
+        const row = history.find(([d]) => d === date);
+        return response(payload(fund, date, Number(row[1])));
     };
     const before = await readSnapshot(root);
     const snapshot = await updateFromMufg(root, fetcher, { ...options, backfill: true });
 
-    // The latest date reuses the latest-value response, so it is never requested by date.
     assert.deepEqual(requests.filter(url => url.includes(funds[0].associationCode)),
         [latestURL(funds[0])], 'saved funds resume from their last date instead of their inception');
-    assert.deepEqual(requests.filter(url => url.includes(added.associationCode)),
-        [latestURL(added), datedURL(added, '2025-01-06'), datedURL(added, '2025-01-07')]);
+    assert.equal(requests.filter(url => url === csvURL(added)).length, 1, 'one CSV request for the new fund');
+    assert.deepEqual(requests.filter(url => url.includes('/fund_information_date/')),
+        [datedURL(added, '2025-01-07')], 'interior dates are sampled even in a short history');
 
-    const history = snapshot.series.find(s => s.fundId === 'topix');
-    assert.equal(history.observations[0].date, added.start);
-    assert.equal(history.observations.length, 3);
+    const imported = snapshot.series.find(s => s.fundId === 'topix');
+    assert.deepEqual(imported.observations, history.map(([date, value]) => ({ date, value })));
+    assert.equal(imported.valueBasis, 'nav');
     for (const old of before.series) {
         const next = snapshot.series.find(s => s.fundId === old.fundId);
         assert.deepEqual(next.observations.slice(0, old.observations.length), old.observations,
@@ -178,29 +249,57 @@ test('adding a fund needs an explicit backfill and never refetches the saved one
     assert.equal(snapshot.manifest.funds.length, 3);
 });
 
-test('explicit initial backfill requests each date from fund inception', async t => {
+test('an imported history is sampled against the API and rejected when it disagrees', async t => {
+    const added = { id: 'topix', code: '000000', associationCode: '0000000A', isin: 'JP90C0000000',
+        name: 'テスト専用の追加商品', start: '2025-01-06' };
+    const root = await folder(t);
+    funds.push(added);
+    t.after(() => { funds.pop(); });
+
+    // Long enough that the sampling step selects interior dates.
+    const history = Array.from({ length: 60 }, (_, i) => [nextDays('2025-01-06', i), String(10000 + i)]);
+    const sampled = [];
+    const fetcher = async url => {
+        if (url === csvURL(added)) return csv(added, history);
+        const fund = funds.find(f => url.includes(f.associationCode));
+        if (url === latestURL(fund)) {
+            const last = fund === added ? history[history.length - 1] : ['2025-01-08', '10200'];
+            return response(payload(fund, last[0], Number(last[1])));
+        }
+        const date = url.match(/base_date\/(\d{4})(\d{2})(\d{2})$/).slice(1).join('-');
+        if (fund === added) sampled.push(date);
+        const row = history.find(([d]) => d === date);
+        // Report a different NAV for one sampled day than the CSV published.
+        const nav = row ? Number(row[1]) + (sampled.length === 3 ? 1 : 0) : 10000;
+        return response(payload(fund, date, nav));
+    };
+    await assert.rejects(updateFromMufg(root, fetcher, { ...options, backfill: true }),
+        /CSVとAPIの基準価額が一致しません/);
+    assert(sampled.length >= 3 && sampled.length <= 20, `sampled ${sampled.length} dates`);
+    assert(sampled.every(date => date > history[0][0] && date < history[history.length - 1][0]),
+        'sampling covers the interior of the imported range');
+});
+
+test('explicit initial backfill imports every fund from its inception CSV', async t => {
     const root = await folder(t, null);
+    const rows = fund => [[fund.start, '10000'], ['2018-11-01', '10100'], ['2018-11-02', '10200']];
     const requests = [];
     const fetcher = async url => {
         requests.push(url);
-        const fund = funds.find(f => url.includes(f.associationCode));
-        const end = '2018-11-02';
-        if (url === latestURL(fund)) return response(payload(fund, end, 10200));
+        const fund = funds.find(f => url.includes(f.code) || url.includes(f.associationCode));
+        if (url === csvURL(fund)) return csv(fund, rows(fund));
+        if (url === latestURL(fund)) return response(payload(fund, '2018-11-02', 10200));
         const date = url.match(/base_date\/(\d{4})(\d{2})(\d{2})$/).slice(1).join('-');
-        return response(payload(fund, date, date === fund.start ? 10000 : 10100));
+        return response(payload(fund, date, Number(rows(fund).find(([d]) => d === date)[1])));
     };
     const snapshot = await updateFromMufg(root, fetcher, { ...options, backfill: true });
     assert(snapshot.series.every(s => s.observations.at(-1).date === '2018-11-02'));
     assert.equal(snapshot.series[0].observations[0].date, '2018-10-31');
     assert.equal(snapshot.series[1].observations[0].date, '2018-07-03');
-    assert.equal(snapshot.series[0].observations.length, 3);
-    assert.equal(snapshot.series[1].observations.length, 123);
-    assert.equal(requests.length, 126);
-    assert.deepEqual(requests.slice(0, 6), [latestURL(funds[0]), datedURL(funds[0], '2018-10-31'),
-        datedURL(funds[0], '2018-11-01'), latestURL(funds[1]), datedURL(funds[1], '2018-07-03'),
-        datedURL(funds[1], '2018-07-04')]);
-    assert.equal(requests.at(-1), datedURL(funds[1], '2018-11-01'));
-    assert.deepEqual(await readSnapshot(root), snapshot);
+    assert.deepEqual(requests, [
+        csvURL(funds[0]), datedURL(funds[0], '2018-11-01'), latestURL(funds[0]),
+        csvURL(funds[1]), datedURL(funds[1], '2018-11-01'), latestURL(funds[1]),
+    ], 'one CSV, the sampled interior dates and one latest-value request per fund');
 });
 
 test('API rollback, future dates, mismatched dates and failures leave saved files intact', async t => {

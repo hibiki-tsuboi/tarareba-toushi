@@ -16,6 +16,12 @@ export const datedURL = (fund, date) => {
     day(date);
     return `https://developer.am.mufg.jp/fund_information_date/association_fund_cd/${fund.associationCode}/base_date/${date.replaceAll('-', '')}`;
 };
+// Published history for a fund's whole lifetime in one file. Used only to seed a fund
+// that has no saved history; daily updates stay on the API.
+export const csvURL = fund => `https://www.am.mufg.jp/fund_file/setteirai/${fund.code}.csv`;
+export const csvHeaders = ['基準日', '基準価額(円)', '基準価額（分配金再投資）(円)', '分配金（税引前）(円)', '純資産総額（億円）'];
+// Dated API checks made against the imported history before it is written.
+export const importSampleCount = 20;
 export const navNote = '通常の基準価額（1万口あたり・信託報酬控除後）を使用。分配金の受取額・再投資は含みません。';
 const normalize = value => value.normalize('NFKC').trim();
 const decimal = value => {
@@ -23,6 +29,61 @@ const decimal = value => {
     assert(Number(value) > 0, '基準価額は正数である必要があります');
     return value;
 };
+
+// RFC 4180 quoting; reject a changed format instead of silently dropping rows/columns.
+export function parseCSV(text) {
+    const rows = [];
+    let row = [], field = '', quoted = false, closed = false;
+    for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+        if (quoted) {
+            if (c === '"') {
+                if (text[i + 1] === '"') { field += '"'; i++; }
+                else { quoted = false; closed = true; }
+            } else { field += c; }
+        } else if (c === ',' || c === '\n' || c === '\r') {
+            row.push(field); field = ''; closed = false;
+            if (c !== ',') {
+                rows.push(row); row = [];
+                if (c === '\r' && text[i + 1] === '\n') i++;
+            }
+        } else if (c === '"') {
+            assert(!field && !closed, '不正なCSV引用符'); quoted = true;
+        } else {
+            assert(!closed, 'CSV引用符の後に不正な文字があります'); field += c;
+        }
+    }
+    assert(!quoted, 'CSV引用符が閉じていません');
+    if (row.length || field || closed) { row.push(field); rows.push(row); }
+    return rows;
+}
+
+// Keeps the date and the ordinary NAV only. The reinvested series and the pre-tax
+// distribution are validated for format and then discarded, never stored.
+export function parseMufgCSV(text, fund) {
+    const rows = parseCSV(text.replace(/^\uFEFF/, ''));
+    assert.deepEqual(rows[0]?.map(normalize), [normalize(fund.name)], 'CSVの商品が一致しません');
+    assert.deepEqual(rows[1]?.map(normalize), csvHeaders.map(normalize), 'CSVの列構成が変わっています');
+    assert(rows.length > 2 && rows.length <= 30_002, 'CSVの履歴件数が不正です');
+    let previous = '';
+    const observations = [];
+    for (const row of rows.slice(2)) {
+        assert.equal(row.length, csvHeaders.length, 'CSVの列が不足しています');
+        assert.match(row[0], /^\d{4}\/\d{2}\/\d{2}$/, 'CSVの基準日が不正です');
+        const date = row[0].replaceAll('/', '-');
+        day(date);
+        assert(date > previous, 'CSVの観測日は昇順・重複なしである必要があります');
+        const nav = decimal(row[1]);
+        decimal(row[2]);
+        if (row[3] !== '') {
+            assert.match(row[3], /^(0|[1-9][0-9]*)(\.[0-9]{1,6})?$/, '分配金の形式が不正です');
+        }
+        observations.push({ date, value: nav });
+        previous = date;
+    }
+    assert.equal(observations[0].date, fund.start, 'CSVの先頭が設定日と一致しません');
+    return observations;
+}
 
 // Only a successful, explicitly empty dated response means there is no observation.
 // HTTP errors and API error payloads must never be treated as market holidays.
@@ -181,18 +242,42 @@ export async function updateFromMufg(root, fetcher = fetch, options = {}) {
     const today = options.today ?? new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
     day(today);
     let requested = false;
-    const download = async url => {
+    const space = async () => {
         if (requested) await (options.wait ?? wait)(1000);
         requested = true;
+    };
+    const download = async url => {
+        await space();
         return JSON.parse(await fetchBytes(url, 'application/json', fetcher));
+    };
+    // One request for a whole lifetime instead of one per day. Reachable only for a
+    // fund with no saved history, so published dates and NAVs are never overwritten.
+    const importHistory = async fund => {
+        await space();
+        const bytes = await fetchBytes(csvURL(fund), 'text/csv', fetcher);
+        const observations = parseMufgCSV(new TextDecoder('shift_jis', { fatal: true }).decode(bytes), fund);
+        // Spot-check the imported range against the API before trusting any of it.
+        const step = Math.max(1, Math.floor(observations.length / (importSampleCount + 1)));
+        for (let i = step; i < observations.length - 1; i += step) {
+            const expected = observations[i];
+            const actual = parseFundInformation(await download(datedURL(fund, expected.date)), fund, expected.date);
+            assert(actual?.value === expected.value,
+                `CSVとAPIの基準価額が一致しません（${fund.id} ${expected.date}）`);
+        }
+        return observations;
     };
     for (const [index, fund] of funds.entries()) {
         const observations = histories[index].observations;
+        const imported = observations.length === 0;
+        if (imported) observations.push(...await importHistory(fund));
         const latest = parseFundInformation(await download(latestURL(fund)), fund);
         assert(latest.date <= today, 'APIの最新基準日が未来です');
         const previous = observations.at(-1);
         assert(!previous || latest.date >= previous.date, 'APIの最新基準日が保存済み履歴より古いです');
         if (previous?.date === latest.date) {
+            // An imported history must already agree with the API on its last date.
+            assert(!imported || previous.value === latest.value,
+                `CSVとAPIの基準価額が一致しません（${fund.id} ${latest.date}）`);
             // Allow a correction of the latest NAV without fetching older observations again.
             observations[observations.length - 1] = latest;
             continue;
