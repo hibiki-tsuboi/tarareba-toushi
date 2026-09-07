@@ -9,6 +9,7 @@ export const publicURL = 'https://tarareba-data.hibiki-apps.workers.dev/live/';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const read = async path => JSON.parse(await readFile(path, 'utf8'));
 class MissingManifest extends Error {}
+class PublicationChanged extends Error {}
 
 export async function localSnapshot(directory = root) {
     const folder = resolve(directory, 'public/live');
@@ -19,6 +20,16 @@ export async function localSnapshot(directory = root) {
 }
 
 export async function publishedSnapshot(fetcher = fetch) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+        try { return await readPublishedSnapshot(fetcher); }
+        catch (error) {
+            if (!(error instanceof PublicationChanged)) throw error;
+            if (attempt === 1) throw new Error('公開データの更新情報が一致しません。時間をおいて再実行してください');
+        }
+    }
+}
+
+async function readPublishedSnapshot(fetcher) {
     const download = async path => {
         const bytes = await fetchBytes(new URL(path, publicURL).href, 'application/json', async (url, options) => {
             const response = await fetcher(url, options);
@@ -33,7 +44,11 @@ export async function publishedSnapshot(fetcher = fetch) {
     // Validate paths before making any history requests.
     validateManifest(manifest, 'live');
     const series = [];
-    for (const fund of manifest.funds) series.push(await download(fund.path));
+    for (const fund of manifest.funds) {
+        const history = await download(fund.path);
+        if (manifest.schemaVersion === 2 && history.datasetVersion !== fund.contentVersion) throw new PublicationChanged();
+        series.push(history);
+    }
     return validate({ manifest, series }, 'live');
 }
 
@@ -47,12 +62,14 @@ export async function publicationStatus(directory = root, fetcher = fetch) {
     }
     for (const previous of published.manifest.funds) {
         const next = local.manifest.funds.find(f => f.id === previous.id);
-        assert(next.firstDate === previous.firstDate && next.lastDate >= previous.lastDate,
+        assert(next && next.firstDate === previous.firstDate && next.lastDate >= previous.lastDate,
             '公開中の履歴より短いデータには切り替えられません');
         const oldSeries = published.series.find(s => s.fundId === previous.id);
-        // A fresh CI checkout must retain every currently published history URL.
-        const archive = await read(resolve(directory, 'public/live', previous.path));
-        assert.deepEqual(archive, oldSeries, '公開中の旧版JSONをGitに保存してから再実行してください');
+        // Already-published legacy URLs remain readable during migration only.
+        if (published.manifest.schemaVersion === 1) {
+            const archive = await read(resolve(directory, 'public/live', previous.path));
+            assert.deepEqual(archive, oldSeries, '移行前の公開JSONが見つかりません');
+        }
         const dates = new Set(local.series.find(s => s.fundId === previous.id).observations.map(o => o.date));
         assert(oldSeries.observations.every(o => dates.has(o.date)), '公開中の履歴から観測日が欠けています');
     }

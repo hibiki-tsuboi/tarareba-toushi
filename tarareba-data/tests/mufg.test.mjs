@@ -188,7 +188,7 @@ test('API rollback, future dates, mismatched dates and failures leave saved file
     }
 });
 
-test('a corrected latest NAV creates a new edition without changing older observations', async t => {
+test('a corrected latest NAV updates the same fixed URL without changing older observations', async t => {
     const root = await folder(t);
     const before = await readSnapshot(root);
     const next = await updateFromMufg(root, server('2025-01-07', 9800).fetch, options);
@@ -236,7 +236,7 @@ test('writes distribution files only, keeps editions stable and rejects history 
     updated[0].observations[1].value = '11001';
     const next = await writeSnapshot(createSnapshot(updated), root);
     assert.notEqual(first.manifest.datasetVersion, next.manifest.datasetVersion);
-    assert.equal((await readdir(resolve(root, 'public/live/funds'))).length, 4);
+    assert.deepEqual((await readdir(resolve(root, 'public/live/funds'))).sort(), ['all-country.json', 'sp500.json']);
     const manifest = await readFile(resolve(root, 'public/live/manifest.json'), 'utf8');
     updated[0].observations.splice(1, 1);
     await assert.rejects(writeSnapshot(createSnapshot(updated), root), /観測日が欠け/);
@@ -244,13 +244,13 @@ test('writes distribution files only, keeps editions stable and rejects history 
     await assert.rejects(readdir(resolve(directory, 'ios')), { code: 'ENOENT' });
 });
 
-test('rejects an existing immutable file with different content', async t => {
+test('rejects changed content without a changed identifier', async t => {
     const directory = await mkdtemp(resolve(tmpdir(), 'tarareba-mufg-'));
     t.after(() => rm(directory, { recursive: true, force: true }));
     const root = resolve(directory, 'tarareba-data');
     const snapshot = await writeSnapshot(createSnapshot(histories()), root);
     snapshot.series[1].observations[1].value = '12000';
-    await assert.rejects(writeSnapshot(snapshot, root), /既存の版は変更できません/);
+    await assert.rejects(writeSnapshot(snapshot, root), /同じ版のデータ/);
 });
 
 test('rejects HTTP errors, HTML and advertised or streamed oversize responses', async () => {
@@ -282,4 +282,64 @@ test('an upstream failure leaves the last valid manifest intact', async t => {
     const before = await readFile(path, 'utf8');
     await assert.rejects(updateFromMufg(root, async () => new Response('unavailable', { status: 503 })));
     assert.equal(await readFile(path, 'utf8'), before);
+});
+
+
+test('only the changed fund gets new content and the fixed file count stays constant', async t => {
+    const root = await folder(t);
+    const before = await readSnapshot(root);
+    const otherPath = resolve(root, 'public/live/funds/sp500.json');
+    const otherBytes = await readFile(otherPath, 'utf8');
+    const history = histories();
+    history[0].observations.push({ date: '2025-01-08', value: '10300' });
+    const next = await writeSnapshot(createSnapshot(history), root);
+    assert.notEqual(next.manifest.funds[0].contentVersion, before.manifest.funds[0].contentVersion);
+    assert.equal(next.manifest.funds[1].contentVersion, before.manifest.funds[1].contentVersion);
+    assert.deepEqual(next.manifest.funds.map(f => f.path), before.manifest.funds.map(f => f.path));
+    assert.equal(await readFile(otherPath, 'utf8'), otherBytes);
+    assert.deepEqual((await readdir(resolve(root, 'public/live/funds'))).sort(), ['all-country.json', 'sp500.json']);
+});
+
+test('migration from versioned URLs preserves every date and value and subsequent writes stay fixed', async t => {
+    const root = await folder(t, null);
+    const legacy = createSnapshot(histories());
+    legacy.manifest.schemaVersion = 1;
+    legacy.manifest.datasetVersion = 'legacy-live';
+    for (const fund of legacy.manifest.funds) {
+        delete fund.contentVersion;
+        fund.path = `funds/${fund.id}.legacy-live.json`;
+    }
+    for (const series of legacy.series) {
+        series.schemaVersion = 1;
+        series.datasetVersion = 'legacy-live';
+    }
+    await writeSnapshot(legacy, root);
+    const next = await writeSnapshot(createSnapshot(histories()), root);
+    assert.deepEqual(next.series.map(s => s.observations), legacy.series.map(s => s.observations));
+    for (const fund of legacy.manifest.funds) {
+        assert.deepEqual(JSON.parse(await readFile(resolve(root, 'public/live', fund.path), 'utf8')),
+            legacy.series.find(s => s.fundId === fund.id));
+    }
+    const files = await readdir(resolve(root, 'public/live/funds'));
+    await updateFromMufg(root, server('2025-01-08').fetch, options);
+    assert.deepEqual(await readdir(resolve(root, 'public/live/funds')), files);
+});
+
+test('a hundred-product catalog can contain additional histories outside the comparison period', () => {
+    const snapshot = createSnapshot(histories());
+    for (let index = 2; index < 100; index++) {
+        const series = structuredClone(snapshot.series[0]);
+        series.fundId = `additional-${index}`;
+        series.observations = [{ date: '2010-01-04', value: '10000' }];
+        const descriptor = { ...snapshot.manifest.funds[0], id: series.fundId,
+            displayName: `追加商品${index}`, path: `funds/${series.fundId}.json`,
+            firstDate: '2010-01-04', lastDate: '2010-01-04' };
+        snapshot.series.push(series);
+        snapshot.manifest.funds.push(descriptor);
+    }
+    assert.equal(validate(snapshot, 'live').manifest.funds.length, 100);
+    const missing = structuredClone(snapshot);
+    missing.manifest.funds.shift();
+    missing.series.shift();
+    assert.throws(() => validate(missing, 'live'), /必要な商品/);
 });

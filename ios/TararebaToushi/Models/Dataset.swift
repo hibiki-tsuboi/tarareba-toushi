@@ -15,6 +15,7 @@ nonisolated struct FundDescriptor: Codable, Equatable, Identifiable, Sendable {
     var path: String
     var firstDate: String
     var lastDate: String
+    var contentVersion: String? = nil
 }
 
 nonisolated struct FundSeries: Codable, Equatable, Sendable {

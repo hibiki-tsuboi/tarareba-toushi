@@ -56,7 +56,7 @@ actor LocalSnapshotStore: SnapshotStore {
         flags.isExcludedFromBackup = true
         try folder.setResourceValues(flags)
         let bytes = try JSONEncoder().encode(value)
-        // One validated envelope; atomic replacement keeps both funds on the same version.
+        // One validated envelope; atomic replacement keeps both funds consistent with the saved catalog.
         try bytes.write(to: file, options: .atomic)
     }
 }

@@ -22,20 +22,25 @@ enum UITestFixtures {
         let values = [["7000", "8000", "9000", "10000", "15000", "11900", "12000"],
             ["6000", "7000", "8000", "10000", "16000", "13900", "14000"]]
         let version = "ui-fixture-v1"
+        let contentVersions = ["fund-" + String(repeating: "a", count: 64), "fund-" + String(repeating: "b", count: 64)]
         let descriptors: [[String: Any]] = ids.enumerated().map { index, id in
-            ["id": id, "displayName": names[index], "currency": "JPY", "path": "funds/\(id).\(version).json",
+            var descriptor: [String: Any] = ["id": id, "displayName": names[index], "currency": "JPY",
+                "path": sample ? "funds/\(id).\(version).json" : "funds/\(id).json",
                 "firstDate": dates[0], "lastDate": dates[dates.count - 1]]
+            if !sample { descriptor["contentVersion"] = contentVersions[index] }
+            return descriptor
         }
-        let manifest: [String: Any] = ["schemaVersion": 1, "datasetVersion": version, "isSample": sample,
+        let manifest: [String: Any] = ["schemaVersion": sample ? 1 : 2, "datasetVersion": version, "isSample": sample,
             "publishedAt": "2026-09-06T00:00:00Z", "funds": descriptors]
         var result = ["/\(mode)/manifest.json": json(manifest)]
         for (index, id) in ids.enumerated() {
             let source: [String: Any] = ["kind": sample ? "synthetic" : "official", "name": "自動テスト用の架空値",
                 "url": "https://example.com/fund", "note": "UIテスト用の固定値です。実際の運用実績ではありません。"]
-            let series: [String: Any] = ["schemaVersion": 1, "datasetVersion": version, "isSample": sample,
+            let series: [String: Any] = ["schemaVersion": sample ? 1 : 2, "datasetVersion": sample ? version : contentVersions[index], "isSample": sample,
                 "fundId": id, "currency": "JPY", "valueBasis": sample ? "reinvestedIndex" : "nav", "source": source,
                 "observations": zip(dates, values[index]).map { ["date": $0.0, "value": $0.1] }]
-            result["/\(mode)/funds/\(id).\(version).json"] = json(series)
+            let path = sample ? "funds/\(id).\(version).json" : "funds/\(id).json"
+            result["/\(mode)/\(path)"] = json(series)
         }
         return json(result)
     }

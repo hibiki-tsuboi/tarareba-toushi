@@ -62,19 +62,21 @@ export async function readSnapshot(root) {
 export function createSnapshot(histories, publishedAt = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z')) {
     assert.equal(histories.length, funds.length);
     const series = funds.map((fund, i) => ({
-        schemaVersion: 1, isSample: false, fundId: fund.id, currency: 'JPY', valueBasis: 'nav',
+        schemaVersion: 2, isSample: false, fundId: fund.id, currency: 'JPY', valueBasis: 'nav',
         source: { kind: 'official', name: '三菱UFJアセットマネジメント',
             url: `https://emaxis.am.mufg.jp/fund/${fund.code}.html`,
             note: navNote },
         observations: histories[i].observations.map(({ date, value }) => ({ date, value }))
     }));
+    for (const s of series) {
+        s.datasetVersion = `fund-${createHash('sha256').update(JSON.stringify(s)).digest('hex')}`;
+    }
     const lastDate = series.map(s => s.observations.at(-1).date).sort().at(0);
     const hash = createHash('sha256').update(JSON.stringify(series)).digest('hex').slice(0, 12);
     const version = `mufg-${lastDate.replaceAll('-', '')}-${hash}`;
-    for (const s of series) s.datasetVersion = version;
-    const manifest = { schemaVersion: 1, datasetVersion: version, isSample: false, publishedAt,
+    const manifest = { schemaVersion: 2, datasetVersion: version, isSample: false, publishedAt,
         funds: funds.map((fund, i) => ({ id: fund.id, displayName: fund.name, currency: 'JPY',
-            path: `funds/${fund.id}.${version}.json`,
+            path: `funds/${fund.id}.json`, contentVersion: series[i].datasetVersion,
             firstDate: series[i].observations[0].date, lastDate: series[i].observations.at(-1).date })) };
     return validate({ manifest, series }, 'live');
 }
@@ -93,39 +95,53 @@ async function atomicWrite(path, contents) {
 export async function writeSnapshot(snapshot, root) {
     validate(snapshot, 'live');
     const target = resolve(root, 'public/live');
-    const oldManifest = await readJSON(resolve(target, 'manifest.json'));
-    if (oldManifest?.datasetVersion === snapshot.manifest.datasetVersion) {
-        // Content did not change. Keep the timestamp and immutable URLs identical.
-        snapshot.manifest.publishedAt = oldManifest.publishedAt;
-        assert.deepEqual(snapshot.manifest, oldManifest, '同じ版のmanifestが変更されています');
-    } else if (oldManifest) {
-        for (const fund of snapshot.manifest.funds) {
-            const old = oldManifest.funds.find(f => f.id === fund.id);
-            assert(old && fund.firstDate === old.firstDate && fund.lastDate >= old.lastDate, '取得履歴が短くなっています');
-            const oldSeries = await readJSON(resolve(target, old.path));
-            assert(oldSeries, '旧版の履歴が見つかりません');
-            const dates = new Set(snapshot.series.find(s => s.fundId === fund.id).observations.map(o => o.date));
-            assert(oldSeries.observations.every(o => dates.has(o.date)), '取得履歴から既存の観測日が欠けています');
+    const previous = await readSnapshot(root);
+    if (previous?.manifest.datasetVersion === snapshot.manifest.datasetVersion) {
+        snapshot.manifest.publishedAt = previous.manifest.publishedAt;
+        assert.deepEqual(snapshot, previous, '同じ版のデータが変更されています');
+        return previous;
+    }
+    if (previous) {
+        for (const old of previous.series) {
+            const next = snapshot.series.find(s => s.fundId === old.fundId);
+            assert(next && next.observations[0].date === old.observations[0].date
+                && next.observations.at(-1).date >= old.observations.at(-1).date, '取得履歴が短くなっています');
+            const dates = new Set(next.observations.map(o => o.date));
+            assert(old.observations.every(o => dates.has(o.date)), '取得履歴から既存の観測日が欠けています');
         }
     }
-    // Detect a collision before writing either series; never overwrite a versioned file.
-    for (const fund of snapshot.manifest.funds) {
-        const old = await readJSON(resolve(target, fund.path));
-        if (old) assert.deepEqual(old, snapshot.series.find(s => s.fundId === fund.id), '既存の版は変更できません');
-    }
     await mkdir(resolve(target, 'funds'), { recursive: true });
-    for (const fund of snapshot.manifest.funds) {
-        const path = resolve(target, fund.path);
-        if (!await readJSON(path)) await atomicWrite(path, json(snapshot.series.find(s => s.fundId === fund.id)));
+    // Validate everything before replacing files. The manifest is always written last.
+    // Roll back completed writes on an I/O failure; readers also reject mixed contents.
+    const writes = snapshot.manifest.funds.map(fund => ({ path: resolve(target, fund.path),
+        contents: json(snapshot.series.find(s => s.fundId === fund.id)) }));
+    writes.push({ path: resolve(target, 'manifest.json'), contents: json(snapshot.manifest) });
+    const pending = [];
+    for (const write of writes) {
+        let before = null;
+        try { before = await readFile(write.path, 'utf8'); }
+        catch (error) { if (error.code !== 'ENOENT') throw error; }
+        if (before !== write.contents) pending.push({ ...write, before });
     }
-    // Publish the manifest only after both validated histories exist.
-    await atomicWrite(resolve(target, 'manifest.json'), json(snapshot.manifest));
+    const completed = [];
+    try {
+        for (const write of pending) {
+            await atomicWrite(write.path, write.contents);
+            completed.push(write);
+        }
+    } catch (error) {
+        for (const write of completed.reverse()) {
+            if (write.before === null) await rm(write.path, { force: true });
+            else await atomicWrite(write.path, write.before);
+        }
+        throw error;
+    }
     return snapshot;
 }
 
 export async function fetchBytes(url, contentType, fetcher = fetch) {
     const response = await fetcher(url, { redirect: 'error', signal: AbortSignal.timeout(20_000),
-        headers: { Accept: contentType } });
+        headers: { Accept: contentType, 'Cache-Control': 'no-cache' } });
     assert.equal(response.status, 200, `取得に失敗しました（${response.status}）: ${url}`);
     assert.equal(response.headers.get('content-type')?.split(';')[0].trim(), contentType, '応答形式が一致しません');
     const limit = 2 * 1024 * 1024;

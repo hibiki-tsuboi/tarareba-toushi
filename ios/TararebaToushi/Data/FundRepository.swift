@@ -98,22 +98,9 @@ final class FundRepository {
         isRefreshing = true
         defer { isRefreshing = false }
         do {
-            let manifest = try await remote.manifest()
-            let candidate: ValidatedDataset
-            let newOrigin: SnapshotOrigin
-            let newFetchedAt: Date?
-            if let current = dataset, manifest.datasetVersion == current.snapshot.manifest.datasetVersion {
-                guard manifest == current.snapshot.manifest else {
-                    throw DataIssue("同じ版のデータ一覧が変更されています。以前のデータを保持します。")
-                }
-                candidate = current
-                newOrigin = origin
-                newFetchedAt = fetchedAt
-            } else {
-                candidate = try await remote.dataset(manifest: manifest)
-                newOrigin = .remote
-                newFetchedAt = now()
-            }
+            let candidate = try await remote.updatedDataset(reusing: dataset?.snapshot)
+            let newOrigin: SnapshotOrigin = .remote
+            let newFetchedAt = candidate.snapshot.series == dataset?.snapshot.series ? fetchedAt : now()
             let checked = now()
             let envelope = StoredSnapshot(
                 identity: configuration.cacheIdentity, snapshot: candidate.snapshot,

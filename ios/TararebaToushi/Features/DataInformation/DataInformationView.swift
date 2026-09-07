@@ -47,7 +47,7 @@ struct DataInformationView: View {
                 Section("表示中のデータ") {
                     row("データモード", repository.configuration.mode.label)
                     row("読み込み元", repository.statusLabel)
-                    row("版", repository.dataset?.snapshot.manifest.datasetVersion ?? "—")
+                    row("データ識別子", repository.dataset?.snapshot.manifest.datasetVersion ?? "—")
                     row("共通のデータ基準日", repository.dataset?.endDate.label ?? "—")
                     row("端末での最終取得日時", timestamp(repository.fetchedAt, empty: "未取得"))
                     row("更新確認成功日時", timestamp(repository.checkedAt, empty: "未確認"))

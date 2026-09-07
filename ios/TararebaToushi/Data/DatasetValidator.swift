@@ -3,7 +3,9 @@ import CryptoKit
 
 nonisolated enum DatasetValidator {
     static func validateManifest(_ manifest: Manifest, mode: DatasetMode) throws {
-        guard manifest.schemaVersion == AppConfiguration.schemaVersion else {
+        guard [1, AppConfiguration.schemaVersion].contains(manifest.schemaVersion),
+            mode == .live || manifest.schemaVersion == 1
+        else {
             throw DataIssue("未対応のデータ形式です。アプリの更新が必要な可能性があります。")
         }
         guard manifest.isSample == (mode == .sample) else { throw DataIssue("データのモードが一致しません。") }
@@ -12,8 +14,10 @@ nonisolated enum DatasetValidator {
                 of: #"^[0-9]{4}-[0-9]{2}-[0-9]{2}T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]Z$"#,
                 options: .regularExpression) != nil,
             ISO8601DateFormatter().date(from: manifest.publishedAt) != nil,
-            manifest.funds.count == 2,
-            Set(manifest.funds.map(\.id)) == Set(mode.fundIDs)
+            !manifest.funds.isEmpty, manifest.funds.count <= 1000,
+            Set(manifest.funds.map(\.id)).count == manifest.funds.count,
+            Set(mode.fundIDs).isSubset(of: Set(manifest.funds.map(\.id))),
+            manifest.schemaVersion == 2 || manifest.funds.count == mode.fundIDs.count
         else {
             throw DataIssue("データ一覧の版・商品・公開日時が正しくありません。")
         }
@@ -21,9 +25,16 @@ nonisolated enum DatasetValidator {
         for fund in manifest.funds {
             guard fund.currency == "JPY", !fund.displayName.isEmpty, fund.displayName.count <= 80,
                 fund.displayName.contains("サンプル") == (mode == .sample),
-                fund.path == "funds/\(fund.id).\(manifest.datasetVersion).json"
+                fund.id.range(of: #"^[a-z0-9][a-z0-9-]{0,63}$"#, options: .regularExpression) != nil
             else {
                 throw DataIssue("商品名・通貨・配信パスが正しくありません。")
+            }
+            if manifest.schemaVersion == 2 {
+                guard fund.path == "funds/\(fund.id).json",
+                    fund.contentVersion?.range(of: #"^fund-[a-f0-9]{64}$"#, options: .regularExpression) != nil
+                else { throw DataIssue("商品の配信パス・更新情報が正しくありません。") }
+            } else if fund.path != "funds/\(fund.id).\(manifest.datasetVersion).json" {
+                throw DataIssue("商品の配信パスが正しくありません。")
             }
             guard try TradingDay(fund.firstDate) <= TradingDay(fund.lastDate) else {
                 throw DataIssue("履歴の開始日と終了日が逆転しています。")
@@ -54,7 +65,8 @@ nonisolated enum DatasetValidator {
             guard let descriptor = snapshot.manifest.funds.first(where: { $0.id == id }),
                 let series = snapshot.series.first(where: { $0.fundId == id }),
                 series.schemaVersion == snapshot.manifest.schemaVersion,
-                series.datasetVersion == snapshot.manifest.datasetVersion,
+                series.datasetVersion == (snapshot.manifest.schemaVersion == 2
+                    ? descriptor.contentVersion : snapshot.manifest.datasetVersion),
                 series.isSample == snapshot.manifest.isSample, series.currency == descriptor.currency,
                 supportsValueBasis(series, mode: mode),
                 !series.source.name.isEmpty, !series.source.note.isEmpty,

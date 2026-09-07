@@ -18,7 +18,9 @@ nonisolated struct AppConfiguration: Sendable {
     var mode: DatasetMode = .live
     var manifestPath: String { "\(mode.rawValue)/manifest.json" }
     var refreshInterval: TimeInterval = 6 * 60 * 60
-    static let schemaVersion = 1
+    static let schemaVersion = 2
+    // Preserve existing downloaded snapshots across the wire-format migration.
+    static let snapshotStorageVersion = 1
     static let maximumAmount = 1_000_000_000
     static let initialAmount = 1_000_000
     static let initialDate = "2025-01-01"
@@ -33,6 +35,6 @@ nonisolated struct AppConfiguration: Sendable {
     }
 
     var cacheIdentity: String {
-        "\(manifestURL?.absoluteString ?? dataBaseURL)|\(mode.rawValue)|schema-\(Self.schemaVersion)"
+        "\(manifestURL?.absoluteString ?? dataBaseURL)|\(mode.rawValue)|schema-\(Self.snapshotStorageVersion)"
     }
 }

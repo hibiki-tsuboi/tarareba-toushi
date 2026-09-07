@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { resolve, dirname } from 'node:path';
 import assert from 'node:assert/strict';
-import { validate } from './contract.mjs';
+import { validate, validateManifest } from './contract.mjs';
 import { verifyNoDataFiles } from './verify-app-data.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -13,9 +13,9 @@ const read = async path => {
 };
 for (const mode of ['sample', 'live']) {
     const manifest = await read(resolve(root, `public/${mode}/manifest.json`));
+    validateManifest(manifest, mode);
     const series = [];
     for (const fund of manifest.funds) {
-        assert.match(fund.path, /^funds\/(demo-)?(all-country|sp500)\.[a-z0-9-]+\.json$/);
         series.push(await read(resolve(root, `public/${mode}`, fund.path)));
     }
     validate({ manifest, series }, mode);

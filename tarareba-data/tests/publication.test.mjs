@@ -129,10 +129,38 @@ test('a shorter local history cannot replace a newer public edition', async t =>
     await assert.rejects(publicationStatus(directory, server(newer).fetch), /短いデータ/);
 });
 
-test('a fresh checkout must retain the currently published history files', async t => {
+test('fixed URLs are overwritten without requiring a copy of each previous history', async t => {
     const old = snapshot();
     const directory = await folder(t, old);
-    await writeSnapshot(snapshot('2025-01-07', '12000'), directory);
-    await rm(resolve(directory, 'public/live', old.manifest.funds[0].path));
-    await assert.rejects(publicationStatus(directory, server(old).fetch), { code: 'ENOENT' });
+    const next = snapshot('2025-01-07', '12000');
+    await writeSnapshot(next, directory);
+    assert.equal((await publicationStatus(directory, server(old).fetch)).needsDeploy, true);
+    assert.deepEqual(await verifyPublication(directory, server(next).fetch), next);
+});
+
+
+test('a deployment between the catalog and history requests retries the catalog once', async t => {
+    const old = snapshot();
+    const next = snapshot('2025-01-07', '12000');
+    const directory = await folder(t, next);
+    const remote = server(next);
+    let catalogs = 0;
+    const fetcher = async (url, options) => {
+        if (url === publicURL + 'manifest.json' && ++catalogs === 1) {
+            return new Response(JSON.stringify(old.manifest), { headers: { 'content-type': 'application/json' } });
+        }
+        return remote.fetch(url, options);
+    };
+    assert.deepEqual(await verifyPublication(directory, fetcher), next);
+    assert.equal(catalogs, 2);
+});
+
+test('persistent mixed fixed-URL contents fail verification instead of skipping publication', async t => {
+    const old = snapshot();
+    const next = snapshot('2025-01-07', '12000');
+    const directory = await folder(t, next);
+    const remote = server(next);
+    remote.files.set('funds/all-country.json', JSON.stringify(old.series[0]));
+    await assert.rejects(publicationStatus(directory, remote.fetch), /更新情報が一致しません/);
+    assert.equal(remote.requests.filter(path => path === 'manifest.json').length, 2);
 });

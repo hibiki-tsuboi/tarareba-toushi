@@ -1,14 +1,15 @@
 {
-  "schemaVersion": 1,
-  "datasetVersion": "mufg-20260904-c18ad9a40cee",
+  "schemaVersion": 2,
+  "datasetVersion": "mufg-20260904-f6347a72dbeb",
   "isSample": false,
-  "publishedAt": "2026-09-07T05:42:31Z",
+  "publishedAt": "2026-09-07T06:47:35Z",
   "funds": [
     {
       "id": "all-country",
       "displayName": "eMAXIS Slim 全世界株式（オール・カントリー）",
       "currency": "JPY",
-      "path": "funds/all-country.mufg-20260904-c18ad9a40cee.json",
+      "path": "funds/all-country.json",
+      "contentVersion": "fund-c121496d2b9e8953360900e44c4eda56dc9a0c6a7840dbd65aa0eb1754d1b6db",
       "firstDate": "2018-10-31",
       "lastDate": "2026-09-04"
     },
@@ -16,7 +17,8 @@
       "id": "sp500",
       "displayName": "eMAXIS Slim 米国株式（S&P500）",
       "currency": "JPY",
-      "path": "funds/sp500.mufg-20260904-c18ad9a40cee.json",
+      "path": "funds/sp500.json",
+      "contentVersion": "fund-2d015ece91b0d386a3e07625ad1cae8ecfd62ec9b55e83ca7e57bbbc1b1e3b2d",
       "firstDate": "2018-07-03",
       "lastDate": "2026-09-04"
     }
