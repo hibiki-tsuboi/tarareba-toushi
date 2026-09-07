@@ -19,6 +19,13 @@ const payload = (fund, date = '2025-01-07', nav = 9900) => ({
     }]
 });
 const empty = () => ({ result: { status: 200, retcount: 0, errcd: null }, errors: { count: 0 }, datasets: [] });
+// What the provider actually returns for a date it has no observation for, captured
+// on 2026-09-07 for a weekend. The spec keeps HTTP at 200 for every error response.
+const absent = () => ({
+    result: { status: 404, retcount: 0, errcd: 'BIZ00018', errmsg: '業務エラーが発生しました。' },
+    errors: { count: 1, error_list: [{ code: 'E00026', message: '外部公開用ファンド情報（指定ファンド・基準日指定）がありません。' }] },
+    datasets: null
+});
 const options = { wait: async () => {}, today: '2026-09-07' };
 const nextDays = (date, count) =>
     new Date(Date.parse(`${date}T12:00:00Z`) + count * 86_400_000).toISOString().slice(0, 10);
@@ -123,7 +130,7 @@ function server(latestDate, value = 10100, dates = new Map()) {
         const date = url.match(/base_date\/(\d{4})(\d{2})(\d{2})$/)?.slice(1).join('-');
         assert(date && dates.has(date), `Unexpected historical request: ${url}`);
         const nav = dates.get(date);
-        return response(nav === null ? empty() : payload(fund, date, nav));
+        return response(nav === null ? absent() : payload(fund, date, nav));
     } };
 }
 
@@ -159,12 +166,24 @@ test('rejects wrong products, days, NAVs and malformed/error API envelopes', () 
     assert.throws(() => datedURL(funds[0], '2025-02-30'));
 });
 
-test('only an explicitly successful empty dated response means no observation', () => {
+test('only an explicitly empty or explicitly absent dated response means no observation', () => {
     assert.equal(parseFundInformation(empty(), funds[0], '2025-01-11'), null);
     assert.throws(() => parseFundInformation(empty(), funds[0]));
     for (const mutate of [p => p.result.status = 404, p => p.result.errcd = 'not-found',
         p => p.errors.count = 1, p => p.result.retcount = 1, p => delete p.datasets]) {
         const data = empty(); mutate(data);
+        assert.throws(() => parseFundInformation(data, funds[0], '2025-01-11'));
+    }
+    assert.equal(parseFundInformation(absent(), funds[0], '2025-01-11'), null);
+    // The latest-value endpoint has no date to be absent for; an error stays an error.
+    assert.throws(() => parseFundInformation(absent(), funds[0]));
+    // A server fault, a different business error or stray data must never pass as a holiday.
+    for (const mutate of [p => p.result.status = 500, p => p.result.status = 200,
+        p => p.result.errcd = 'BIZ00019', p => p.result.errcd = null, p => p.result.retcount = 1,
+        p => p.errors.count = 0, p => p.errors.error_list[0].code = 'E00027',
+        p => p.errors.error_list.push({ code: 'E00026' }), p => delete p.errors,
+        p => p.datasets = [], p => p.datasets = [payload(funds[0]).datasets[0]]]) {
+        const data = absent(); mutate(data);
         assert.throws(() => parseFundInformation(data, funds[0], '2025-01-11'));
     }
 });

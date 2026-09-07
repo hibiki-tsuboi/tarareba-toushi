@@ -89,10 +89,21 @@ export function parseMufgCSV(text, fund) {
     return observations;
 }
 
-// Only a successful, explicitly empty dated response means there is no observation.
-// HTTP errors and API error payloads must never be treated as market holidays.
+// A date with no observation is reported as this exact payload, with HTTP still 200
+// as the spec defines for every error response. Nothing else may be read as one:
+// HTTP errors, other error codes and malformed payloads must all stop the update.
+export function isNoObservation(payload) {
+    return payload?.result?.status === 404 && payload.result.errcd === 'BIZ00018'
+        && payload.result.retcount === 0 && payload.datasets == null
+        && payload.errors?.count === 1 && payload.errors.error_list?.length === 1
+        && payload.errors.error_list[0].code === 'E00026';
+}
+
+// Only an explicitly empty or explicitly absent dated response means there is no
+// observation. HTTP errors and other API error payloads are never market holidays.
 export function parseFundInformation(payload, fund, requestedDate = null) {
     if (requestedDate !== null) day(requestedDate);
+    if (requestedDate !== null && isNoObservation(payload)) return null;
     assert.equal(payload.result?.status, 200, 'APIがエラーを返しました');
     assert(payload.result.errcd == null, 'APIがエラーを返しました');
     assert.equal(payload.errors?.count, 0, 'APIがエラーを返しました');
