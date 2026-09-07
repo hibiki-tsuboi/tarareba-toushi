@@ -132,8 +132,50 @@ test('missing or incompatible local history fails before any request; initial ba
     const old = createSnapshot(histories());
     old.series.forEach(s => s.valueBasis = 'reinvestedIndex');
     await writeSnapshot(old, root);
-    await assert.rejects(updateFromMufg(root, fetcher, options), /移行/);
+    await assert.rejects(updateFromMufg(root, fetcher, options), /通常基準価額ではありません/);
     assert.equal(requests, 0);
+});
+
+test('adding a fund needs an explicit backfill and never refetches the saved ones', async t => {
+    // The extra fund stands in for a product added to the catalogue later.
+    const added = { id: 'topix', code: '000000', associationCode: '0000000A', isin: 'JP90C0000000',
+        name: 'テスト専用の追加商品', start: '2025-01-06' };
+    const root = await folder(t);
+    funds.push(added);
+    t.after(() => { funds.pop(); });
+
+    let blocked = 0;
+    const refuse = async () => { blocked++; throw new Error('No network allowed'); };
+    await assert.rejects(updateFromMufg(root, refuse, options), /topix/);
+    await assert.rejects(updateFromMufg(root, refuse, options), /--backfill/);
+    assert.equal(blocked, 0, 'requests must not start before the missing fund is acknowledged');
+
+    const requests = [];
+    const fetcher = async url => {
+        requests.push(url);
+        const fund = funds.find(f => url.includes(f.associationCode));
+        if (url === latestURL(fund)) return response(payload(fund, '2025-01-08', 10200));
+        const date = url.match(/base_date\/(\d{4})(\d{2})(\d{2})$/).slice(1).join('-');
+        return response(payload(fund, date, 10100));
+    };
+    const before = await readSnapshot(root);
+    const snapshot = await updateFromMufg(root, fetcher, { ...options, backfill: true });
+
+    // The latest date reuses the latest-value response, so it is never requested by date.
+    assert.deepEqual(requests.filter(url => url.includes(funds[0].associationCode)),
+        [latestURL(funds[0])], 'saved funds resume from their last date instead of their inception');
+    assert.deepEqual(requests.filter(url => url.includes(added.associationCode)),
+        [latestURL(added), datedURL(added, '2025-01-06'), datedURL(added, '2025-01-07')]);
+
+    const history = snapshot.series.find(s => s.fundId === 'topix');
+    assert.equal(history.observations[0].date, added.start);
+    assert.equal(history.observations.length, 3);
+    for (const old of before.series) {
+        const next = snapshot.series.find(s => s.fundId === old.fundId);
+        assert.deepEqual(next.observations.slice(0, old.observations.length), old.observations,
+            'existing dates and NAVs stay byte-identical when a fund is added');
+    }
+    assert.equal(snapshot.manifest.funds.length, 3);
 });
 
 test('explicit initial backfill requests each date from fund inception', async t => {

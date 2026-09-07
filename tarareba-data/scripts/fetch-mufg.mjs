@@ -163,13 +163,18 @@ const wait = milliseconds => new Promise(resolve => setTimeout(resolve, millisec
 
 export async function updateFromMufg(root, fetcher = fetch, options = {}) {
     const existing = await readSnapshot(root);
-    assert(existing || options.backfill === true,
-        '保存済みの履歴がありません。初回の全履歴取得には --backfill を明示してください');
+    // A fund with no saved history needs every date since its inception: thousands of
+    // requests, so it stays opt-in even when the other funds only need today's value.
+    const missing = funds.filter(fund => !existing?.series.some(s => s.fundId === fund.id));
+    assert(missing.length === 0 || options.backfill === true,
+        `保存済みの履歴がありません（${missing.map(f => f.id).join(', ')}）。`
+        + '設定来の全取得には --backfill を明示してください');
     // Fail before any network request if the saved data is incompatible or incomplete.
     const histories = funds.map(fund => {
-        if (!existing) return { observations: [] };
-        const series = existing.series.find(s => s.fundId === fund.id);
-        assert.equal(series.valueBasis, 'nav', '先に npm run migrate:nav で既存データを移行してください');
+        const series = existing?.series.find(s => s.fundId === fund.id);
+        // Only a newly added fund starts empty; saved funds are never fetched again.
+        if (!series) return { observations: [] };
+        assert.equal(series.valueBasis, 'nav', `${fund.id} の保存データが通常基準価額ではありません`);
         assert.equal(series.observations[0].date, fund.start, '設定来の履歴が揃っていません');
         return { observations: series.observations.map(o => ({ ...o })) };
     });
