@@ -6,13 +6,13 @@ import { day, ids, validate } from './contract.mjs';
 // One drift per fund per cycle. A leader that changes between cycles keeps the
 // sample useful for checking rankings, not just a single winner.
 const cycles = [
-    [0.0016, 0.0011, 0.0006, 0.0021, -0.0012, 0.001, 0.0008, 0.0016],
-    [-0.0014, -0.0009, -0.0004, -0.0019, -0.0004, -0.0016, -0.0014, -0.0014],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0.0018, 0.0014, 0.0007, 0.0022, 0.0026, 0.0028, 0.0028, 0.0024],
+    [0.0016, 0.0011, 0.0006, 0.0021, -0.0012, 0.001, 0.0008, 0.0016, 0.0012],
+    [-0.0014, -0.0009, -0.0004, -0.0019, -0.0004, -0.0016, -0.0014, -0.0014, -0.0016],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0.0018, 0.0014, 0.0007, 0.0022, 0.0026, 0.0028, 0.0028, 0.0024, 0.0026],
 ];
 
-export function generate({ start = '2020-01-06', end = '2026-09-07', seed = 42, version = 'sample-v7' } = {}) {
+export function generate({ start = '2020-01-06', end = '2026-09-07', seed = 42, version = 'sample-v8' } = {}) {
     if (cycles.some(row => row.length !== ids.length)) {
         throw new Error('商品数と架空データのドリフト定義が一致しません。');
     }
@@ -44,6 +44,7 @@ export function generate({ start = '2020-01-06', end = '2026-09-07', seed = 42, 
     const names = [
         'オルカン（サンプル）', 'S&P500（サンプル）', 'TOPIX（サンプル）', 'NASDAQ100（サンプル）',
         '日経平均（サンプル）', '純金（サンプル）', '新興国株（サンプル）', 'ナノテク（サンプル）',
+        '遺伝子工学（サンプル）',
     ];
     const manifest = {
         schemaVersion: 1, datasetVersion: version, isSample: true,

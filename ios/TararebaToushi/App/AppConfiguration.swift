@@ -7,9 +7,10 @@ nonisolated enum DatasetMode: String, Codable, Sendable {
         switch self {
         case .sample:
             ["demo-all-country", "demo-sp500", "demo-topix", "demo-nasdaq100", "demo-nikkei225",
-                "demo-gold", "demo-emerging", "demo-nanotech"]
+                "demo-gold", "demo-emerging", "demo-nanotech", "demo-genomics"]
         case .live:
-            ["all-country", "sp500", "topix", "nasdaq100", "nikkei225", "gold", "emerging", "nanotech"]
+            ["all-country", "sp500", "topix", "nasdaq100", "nikkei225", "gold", "emerging", "nanotech",
+                "genomics"]
         }
     }
 

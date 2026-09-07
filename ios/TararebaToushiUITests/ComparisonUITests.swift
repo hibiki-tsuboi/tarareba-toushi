@@ -50,7 +50,7 @@ final class ComparisonUITests: XCTestCase {
         let app = UITestFixtures.app(mode: "live")
         app.launch()
         waitForSimulation(app)
-        app.buttons["fund-all-country"].tap()
+        tapVisible(app.buttons["fund-all-country"], in: app)
         XCTAssertFalse(app.buttons["fund-all-country"].isSelected)
         XCTAssertEqual(app.buttons["simulate"].label, "結果を見る")
         capture(app, name: "single-fund-input")
@@ -65,9 +65,12 @@ final class ComparisonUITests: XCTestCase {
 
         // The last remaining fund cannot be cleared.
         tapVisible(app.buttons["edit-input"], in: app)
+        // The pop back to the input screen swallows a tap while it is still animating.
+        waitForSimulation(app)
         XCTAssertTrue(app.buttons["fund-sp500"].waitForExistence(timeout: 5))
-        app.buttons["fund-sp500"].tap()
+        tapVisible(app.buttons["fund-sp500"], in: app)
         XCTAssertTrue(app.buttons["fund-sp500"].isSelected)
+        XCTAssertTrue(app.staticTexts["input-error"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.staticTexts["input-error"].label, "商品を1つ以上選んでください。")
 
         // The selection survives a relaunch.
@@ -82,7 +85,7 @@ final class ComparisonUITests: XCTestCase {
         let app = UITestFixtures.app(mode: "live")
         app.launch()
         waitForSimulation(app)
-        app.buttons["fund-topix"].tap()
+        tapVisible(app.buttons["fund-topix"], in: app)
         XCTAssertTrue(app.buttons["fund-topix"].isSelected)
         XCTAssertEqual(app.staticTexts["fund-selection-count"].label, "8商品中3商品を選択中")
         XCTAssertEqual(app.buttons["simulate"].label, "3つを比較する")
@@ -314,12 +317,18 @@ final class ComparisonUITests: XCTestCase {
         app.buttons["完了"].tap()
     }
 
+    // A row scrolled under the status bar still reports itself hittable, but a tap on
+    // its centre lands on the bar instead of the row. Keep the whole element below that.
+    private static let tappableTop: CGFloat = 80
+
     @MainActor private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
+        let top = app.windows.firstMatch.frame.minY + Self.tappableTop
         for _ in 0..<8 {
-            if element.isHittable { return }
-            app.swipeUp()
+            guard element.isHittable else { app.swipeUp(); continue }
+            if element.frame.minY >= top { return }
+            app.swipeDown()
         }
-        XCTAssertTrue(element.isHittable)
+        XCTAssertTrue(element.isHittable && element.frame.minY >= top)
     }
 
     @MainActor private func tapVisible(_ element: XCUIElement, in app: XCUIApplication) {

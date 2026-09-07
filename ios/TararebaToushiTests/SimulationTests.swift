@@ -10,11 +10,13 @@ struct SimulationTests {
         snapshot.manifest.funds.reverse()
         snapshot.series.reverse()
         let dataset = try DatasetValidator.validate(snapshot, mode: mode)
+        // More products are delivered than may be compared at once, so take the limit.
+        let compared = Array(mode.fundIDs.prefix(AppConfiguration.maximumComparisonFunds))
         let input = SimulationInput(
-            amount: 1_000_000, requestedDate: "2025-01-01", fundIDs: mode.fundIDs.reversed())
+            amount: 1_000_000, requestedDate: "2025-01-01", fundIDs: compared.reversed())
         let result = try SimulationCalculator.calculate(input, dataset: dataset)
         // Neither the catalog order nor the request order changes the displayed order.
-        #expect(result.funds.map(\.id) == mode.fundIDs)
+        #expect(result.funds.map(\.id) == compared)
         #expect(result.funds.map(\.displayedValuation) == [1_200_000, 1_400_000, 1_300_000, 1_600_000, 1_500_000, 1_700_000, 1_800_000, 1_900_000])
         #expect(result.funds.map(\.displayedProfit) == [200_000, 400_000, 300_000, 600_000, 500_000, 700_000, 800_000, 900_000])
         #expect(result.funds.allSatisfy { $0.points.first?.amount == 1_000_000 })

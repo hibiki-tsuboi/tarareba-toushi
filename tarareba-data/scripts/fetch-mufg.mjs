@@ -31,7 +31,10 @@ export const funds = [
         page: 'https://emaxis.am.mufg.jp/fund/252878.html' },
     { id: 'nanotech', code: '253477', associationCode: '0331218C', isin: 'JP90C000H662',
         name: 'ｅＭＡＸＩＳ Ｎｅｏ ナノテクノロジー', start: '2018-12-03',
-        page: 'https://emaxis.am.mufg.jp/fund/253477.html' }
+        page: 'https://emaxis.am.mufg.jp/fund/253477.html' },
+    { id: 'genomics', code: '253270', associationCode: '03311188', isin: 'JP90C000GR04',
+        name: 'ｅＭＡＸＩＳ Ｎｅｏ 遺伝子工学', start: '2018-08-06',
+        page: 'https://emaxis.am.mufg.jp/fund/253270.html' }
 ];
 export const latestURL = fund => `https://developer.am.mufg.jp/fund_information_latest/association_fund_cd/${fund.associationCode}`;
 export const datedURL = (fund, date) => {

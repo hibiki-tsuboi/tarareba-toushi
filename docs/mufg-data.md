@@ -22,6 +22,7 @@
 | 三菱ＵＦＪ 純金ファンド | 251065 | 03311112 | JP90C0007G10 | 2011-02-07 |
 | ｅＭＡＸＩＳ Ｓｌｉｍ 新興国株式インデックス | 252878 | 0331C177 | JP90C000F7H5 | 2017-07-31 |
 | ｅＭＡＸＩＳ Ｎｅｏ ナノテクノロジー | 253477 | 0331218C | JP90C000H662 | 2018-12-03 |
+| ｅＭＡＸＩＳ Ｎｅｏ 遺伝子工学 | 253270 | 03311188 | JP90C000GR04 | 2018-08-06 |
 
 対象は投資信託の基準価額で、S&P500やMSCI ACWIという株価指数そのものの履歴ではありません。純金ファンドも金地金の価格そのものではなく、金へ投資する投資信託の基準価額です。商品の識別情報は公式ページで確認し、取得時も商品名とAPIの3種類のコードを照合します。出典として表示する商品ページは商品ごとに `funds` の `page` で指定します（eMAXISシリーズ以外は `emaxis.am.mufg.jp` に存在しないため、ファンドコードから組み立てると404になります）。
 
@@ -33,6 +34,7 @@
 - [三菱ＵＦＪ 純金ファンド公式商品ページ](https://www.am.mufg.jp/fund/251065.html)（eMAXISシリーズではないため `emaxis.am.mufg.jp` には存在しません）
 - [新興国株式公式商品ページ](https://emaxis.am.mufg.jp/fund/252878.html)
 - [Ｎｅｏ ナノテクノロジー公式商品ページ](https://emaxis.am.mufg.jp/fund/253477.html)
+- [Ｎｅｏ 遺伝子工学公式商品ページ](https://emaxis.am.mufg.jp/fund/253270.html)
 - [投信情報API](https://www.am.mufg.jp/tool/webapi/)・[公式仕様書（2026-06-09改定）](https://www.am.mufg.jp/assets/pdf/tool/webapi/fund_api.pdf)・[利用規約](https://www.am.mufg.jp/tool/webapi/agreement.html)
 
 ## APIによる取得と更新
@@ -80,7 +82,7 @@ https://www.am.mufg.jp/fund_file/setteirai/<ファンドコード>.csv   # Shift
 | `scripts/fetch-mufg.mjs` の `funds` | 商品定義（`id` / `code` / `associationCode` / `isin` / `name` / `start`） |
 | `scripts/generate-sample.mjs`・`scripts/contract.mjs` の `ids` | サンプルは商品数の一致が必須 |
 | `ios` の `InvestmentFund`・`DatasetMode.fundIDs` | 商品IDと短縮名 |
-| `ios` の `maximumComparisonFunds`・`AppPalette.seriesColors` | 同時比較の上限を超える場合は上限と系列色 |
+| `ios` の `maximumComparisonFunds`・`AppPalette.seriesColors` | 同時比較の上限を上げる場合だけ。系列色は選択順の添字で引くため、必要な色数は上限と同数で商品数ではありません |
 | 本ドキュメントの取得対象表 | 商品名・コード・設定日 |
 
 ## 既存履歴の移行と初回取得
