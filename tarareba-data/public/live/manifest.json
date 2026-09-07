@@ -1,8 +1,8 @@
 {
   "schemaVersion": 2,
-  "datasetVersion": "mufg-20260907-1a85a97ee659",
+  "datasetVersion": "mufg-20260907-510223b79fbf",
   "isSample": false,
-  "publishedAt": "2026-09-07T13:50:49Z",
+  "publishedAt": "2026-09-07T14:27:02Z",
   "funds": [
     {
       "id": "all-country",
@@ -47,6 +47,15 @@
       "path": "funds/nikkei225.json",
       "contentVersion": "fund-0d4849d2d0a6e8587a915259f67285542ddfc2ce0970c6304e95a1e9306636f8",
       "firstDate": "2018-02-02",
+      "lastDate": "2026-09-07"
+    },
+    {
+      "id": "gold",
+      "displayName": "三菱ＵＦＪ 純金ファンド",
+      "currency": "JPY",
+      "path": "funds/gold.json",
+      "contentVersion": "fund-9bf29031e5cd0b741cc851cb4ee17d281f17bcc3b7cc814f67278f6e586067f3",
+      "firstDate": "2011-02-07",
       "lastDate": "2026-09-07"
     }
   ]

@@ -33,6 +33,7 @@ const response = value => new Response(JSON.stringify(value), { headers: { 'cont
 // The provider serves Shift_JIS; only the characters used by these fixtures are mapped.
 const sjis = {
     'の': [130, 204],
+    'ァ': [131, 64],
     'ア': [131, 65],
     'イ': [131, 67],
     'オ': [131, 73],
@@ -45,7 +46,9 @@ const sjis = {
     'テ': [131, 101],
     'デ': [131, 102],
     'ト': [131, 103],
+    'ド': [131, 104],
     'ネ': [131, 108],
+    'フ': [131, 116],
     'マ': [131, 125],
     'メ': [131, 129],
     'リ': [131, 138],
@@ -97,7 +100,9 @@ const sjis = {
     '１': [130, 80],
     'Ａ': [130, 96],
     'Ｄ': [130, 99],
+    'Ｆ': [130, 101],
     'Ｉ': [130, 104],
+    'Ｊ': [130, 105],
     'Ｍ': [130, 108],
     'Ｎ': [130, 109],
     'Ｏ': [130, 110],
@@ -105,6 +110,7 @@ const sjis = {
     'Ｑ': [130, 112],
     'Ｓ': [130, 114],
     'Ｔ': [130, 115],
+    'Ｕ': [130, 116],
     'Ｘ': [130, 119],
     'ｅ': [130, 133],
     'ｉ': [130, 137],
@@ -246,7 +252,7 @@ test('missing or incompatible local history fails before any request; initial ba
 test('adding a fund imports its history from one CSV and never refetches the saved ones', async t => {
     // Stands in for a product added to the catalogue later.
     const added = { id: 'test-fund', code: '000000', associationCode: '0000000A', isin: 'JP90C0000000',
-        name: 'テスト専用の追加商品', start: '2025-01-06' };
+        name: 'テスト専用の追加商品', start: '2025-01-06', page: 'https://www.am.mufg.jp/fund/000000.html' };
     const root = await folder(t);
     funds.push(added);
     t.after(() => { funds.pop(); });
@@ -280,6 +286,7 @@ test('adding a fund imports its history from one CSV and never refetches the sav
     const imported = snapshot.series.find(s => s.fundId === 'test-fund');
     assert.deepEqual(imported.observations, history.map(([date, value]) => ({ date, value })));
     assert.equal(imported.valueBasis, 'nav');
+    assert.equal(imported.source.url, added.page, "the source link is the fund's own product page");
     for (const old of before.series) {
         const next = snapshot.series.find(s => s.fundId === old.fundId);
         assert.deepEqual(next.observations.slice(0, old.observations.length), old.observations,
@@ -290,7 +297,7 @@ test('adding a fund imports its history from one CSV and never refetches the sav
 
 test('an imported history is sampled against the API and rejected when it disagrees', async t => {
     const added = { id: 'test-fund', code: '000000', associationCode: '0000000A', isin: 'JP90C0000000',
-        name: 'テスト専用の追加商品', start: '2025-01-06' };
+        name: 'テスト専用の追加商品', start: '2025-01-06', page: 'https://www.am.mufg.jp/fund/000000.html' };
     const root = await folder(t);
     funds.push(added);
     t.after(() => { funds.pop(); });

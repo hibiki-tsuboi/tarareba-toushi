@@ -10,7 +10,7 @@ final class ComparisonUITests: XCTestCase {
         XCTAssertEqual(app.buttons["simulate"].label, "2つを比較する")
         XCTAssertTrue(app.buttons["fund-all-country"].isSelected)
         XCTAssertTrue(app.buttons["fund-sp500"].isSelected)
-        XCTAssertEqual(app.staticTexts["fund-selection-count"].label, "5商品中2商品を選択中")
+        XCTAssertEqual(app.staticTexts["fund-selection-count"].label, "6商品中2商品を選択中")
         XCTAssertFalse(app.staticTexts["valuation-all-country"].exists)
         XCTAssertFalse(app.buttons["preset-5"].exists)
         capture(app, name: "comparison-input")
@@ -84,7 +84,7 @@ final class ComparisonUITests: XCTestCase {
         waitForSimulation(app)
         app.buttons["fund-topix"].tap()
         XCTAssertTrue(app.buttons["fund-topix"].isSelected)
-        XCTAssertEqual(app.staticTexts["fund-selection-count"].label, "5商品中3商品を選択中")
+        XCTAssertEqual(app.staticTexts["fund-selection-count"].label, "6商品中3商品を選択中")
         XCTAssertEqual(app.buttons["simulate"].label, "3つを比較する")
 
         simulate(app)

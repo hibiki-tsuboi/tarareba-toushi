@@ -15,8 +15,8 @@ struct SimulationTests {
         let result = try SimulationCalculator.calculate(input, dataset: dataset)
         // Neither the catalog order nor the request order changes the displayed order.
         #expect(result.funds.map(\.id) == mode.fundIDs)
-        #expect(result.funds.map(\.displayedValuation) == [1_200_000, 1_400_000, 1_300_000, 1_600_000, 1_500_000])
-        #expect(result.funds.map(\.displayedProfit) == [200_000, 400_000, 300_000, 600_000, 500_000])
+        #expect(result.funds.map(\.displayedValuation) == [1_200_000, 1_400_000, 1_300_000, 1_600_000, 1_500_000, 1_700_000])
+        #expect(result.funds.map(\.displayedProfit) == [200_000, 400_000, 300_000, 600_000, 500_000, 700_000])
         #expect(result.funds.allSatisfy { $0.points.first?.amount == 1_000_000 })
         #expect(result.funds[0].points.map(\.day) == result.funds[1].points.map(\.day))
         #expect(result.startDate.rawValue == "2025-01-06")
@@ -91,11 +91,12 @@ struct SimulationTests {
                 .init(amount: 1_000_000, requestedDate: "2025-01-06", fundIDs: ["demo-nikkei"]), dataset: dataset)
         }
         let dates = ["2025-01-06", "2026-09-04"]
-        let many = try Fixtures.dataset((0...5).map {
+        let limit = AppConfiguration.maximumComparisonFunds
+        let many = try Fixtures.dataset((0...limit).map {
             (id: "fund-\($0)", dates: dates, values: ["10000", "11000"])
         })
         #expect(throws: DataIssue.self) { try many.funds(for: many.funds.map(\.descriptor.id)) }
-        #expect(try many.funds(for: Array(many.funds.prefix(5).map(\.descriptor.id))).count == 5)
+        #expect(try many.funds(for: Array(many.funds.prefix(limit).map(\.descriptor.id))).count == limit)
     }
 
     @Test func aShortHistoryOnlyLimitsTheFundsItIsComparedWith() throws {

@@ -19,14 +19,16 @@
 | ｅＭＡＸＩＳ Ｓｌｉｍ 国内株式（ＴＯＰＩＸ） | 252634 | 03317172 | JP90C000ENA9 | 2017-02-27 |
 | ｅＭＡＸＩＳ ＮＡＳＤＡＱ１００インデックス | 254062 | 0331A211 | JP90C000L9D2 | 2021-01-29 |
 | ｅＭＡＸＩＳ Ｓｌｉｍ 国内株式（日経平均） | 253144 | 03311182 | JP90C000FXV1 | 2018-02-02 |
+| 三菱ＵＦＪ 純金ファンド | 251065 | 03311112 | JP90C0007G10 | 2011-02-07 |
 
-対象は投資信託の基準価額で、S&P500やMSCI ACWIという株価指数そのものの履歴ではありません。商品の識別情報は公式ページで確認し、取得時も商品名とAPIの3種類のコードを照合します。
+対象は投資信託の基準価額で、S&P500やMSCI ACWIという株価指数そのものの履歴ではありません。純金ファンドも金地金の価格そのものではなく、金へ投資する投資信託の基準価額です。商品の識別情報は公式ページで確認し、取得時も商品名とAPIの3種類のコードを照合します。出典として表示する商品ページは商品ごとに `funds` の `page` で指定します（eMAXISシリーズ以外は `emaxis.am.mufg.jp` に存在しないため、ファンドコードから組み立てると404になります）。
 
 - [オルカン公式商品ページ](https://emaxis.am.mufg.jp/fund/253425.html)
 - [S&P500公式商品ページ](https://emaxis.am.mufg.jp/fund/253266.html)
 - [国内株式（TOPIX）公式商品ページ](https://emaxis.am.mufg.jp/fund/252634.html)
 - [NASDAQ100インデックス公式商品ページ](https://emaxis.am.mufg.jp/fund/254062.html)
 - [国内株式（日経平均）公式商品ページ](https://emaxis.am.mufg.jp/fund/253144.html)
+- [三菱ＵＦＪ 純金ファンド公式商品ページ](https://www.am.mufg.jp/fund/251065.html)（eMAXISシリーズではないため `emaxis.am.mufg.jp` には存在しません）
 - [投信情報API](https://www.am.mufg.jp/tool/webapi/)・[公式仕様書（2026-06-09改定）](https://www.am.mufg.jp/assets/pdf/tool/webapi/fund_api.pdf)・[利用規約](https://www.am.mufg.jp/tool/webapi/agreement.html)
 
 ## APIによる取得と更新
@@ -74,6 +76,7 @@ https://www.am.mufg.jp/fund_file/setteirai/<ファンドコード>.csv   # Shift
 | `scripts/fetch-mufg.mjs` の `funds` | 商品定義（`id` / `code` / `associationCode` / `isin` / `name` / `start`） |
 | `scripts/generate-sample.mjs`・`scripts/contract.mjs` の `ids` | サンプルは商品数の一致が必須 |
 | `ios` の `InvestmentFund`・`DatasetMode.fundIDs` | 商品IDと短縮名 |
+| `ios` の `maximumComparisonFunds`・`AppPalette.seriesColors` | 同時比較の上限を超える場合は上限と系列色 |
 | 本ドキュメントの取得対象表 | 商品名・コード・設定日 |
 
 ## 既存履歴の移行と初回取得

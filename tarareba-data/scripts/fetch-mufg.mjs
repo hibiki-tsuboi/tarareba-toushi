@@ -5,17 +5,27 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { day, validate, validateManifest } from './contract.mjs';
 
+// `page` is the official product page shown as the source. Not every product is on the
+// eMAXIS site, so it is stated per fund rather than derived from the fund code.
 export const funds = [
     { id: 'all-country', code: '253425', associationCode: '0331418A', isin: 'JP90C000H1T1',
-        name: 'eMAXIS Slim 全世界株式（オール・カントリー）', start: '2018-10-31' },
+        name: 'eMAXIS Slim 全世界株式（オール・カントリー）', start: '2018-10-31',
+        page: 'https://emaxis.am.mufg.jp/fund/253425.html' },
     { id: 'sp500', code: '253266', associationCode: '03311187', isin: 'JP90C000GKC6',
-        name: 'eMAXIS Slim 米国株式（S&P500）', start: '2018-07-03' },
+        name: 'eMAXIS Slim 米国株式（S&P500）', start: '2018-07-03',
+        page: 'https://emaxis.am.mufg.jp/fund/253266.html' },
     { id: 'topix', code: '252634', associationCode: '03317172', isin: 'JP90C000ENA9',
-        name: 'ｅＭＡＸＩＳ Ｓｌｉｍ 国内株式（ＴＯＰＩＸ）', start: '2017-02-27' },
+        name: 'ｅＭＡＸＩＳ Ｓｌｉｍ 国内株式（ＴＯＰＩＸ）', start: '2017-02-27',
+        page: 'https://emaxis.am.mufg.jp/fund/252634.html' },
     { id: 'nasdaq100', code: '254062', associationCode: '0331A211', isin: 'JP90C000L9D2',
-        name: 'ｅＭＡＸＩＳ ＮＡＳＤＡＱ１００インデックス', start: '2021-01-29' },
+        name: 'ｅＭＡＸＩＳ ＮＡＳＤＡＱ１００インデックス', start: '2021-01-29',
+        page: 'https://emaxis.am.mufg.jp/fund/254062.html' },
     { id: 'nikkei225', code: '253144', associationCode: '03311182', isin: 'JP90C000FXV1',
-        name: 'ｅＭＡＸＩＳ Ｓｌｉｍ 国内株式（日経平均）', start: '2018-02-02' }
+        name: 'ｅＭＡＸＩＳ Ｓｌｉｍ 国内株式（日経平均）', start: '2018-02-02',
+        page: 'https://emaxis.am.mufg.jp/fund/253144.html' },
+    { id: 'gold', code: '251065', associationCode: '03311112', isin: 'JP90C0007G10',
+        name: '三菱ＵＦＪ 純金ファンド', start: '2011-02-07',
+        page: 'https://www.am.mufg.jp/fund/251065.html' }
 ];
 export const latestURL = fund => `https://developer.am.mufg.jp/fund_information_latest/association_fund_cd/${fund.associationCode}`;
 export const datedURL = (fund, date) => {
@@ -141,9 +151,7 @@ export function createSnapshot(histories, publishedAt = new Date().toISOString()
     assert.equal(histories.length, funds.length);
     const series = funds.map((fund, i) => ({
         schemaVersion: 2, isSample: false, fundId: fund.id, currency: 'JPY', valueBasis: 'nav',
-        source: { kind: 'official', name: '三菱UFJアセットマネジメント',
-            url: `https://emaxis.am.mufg.jp/fund/${fund.code}.html`,
-            note: navNote },
+        source: { kind: 'official', name: '三菱UFJアセットマネジメント', url: fund.page, note: navNote },
         observations: histories[i].observations.map(({ date, value }) => ({ date, value }))
     }));
     for (const s of series) {
