@@ -10,6 +10,7 @@ nonisolated enum InvestmentFund: String, CaseIterable, Codable, Identifiable, Se
     case emerging = "emerging"
     case nanotech = "nanotech"
     case genomics = "genomics"
+    case developedBond = "developed-bond"
 
     var id: String { rawValue }
 
@@ -24,6 +25,7 @@ nonisolated enum InvestmentFund: String, CaseIterable, Codable, Identifiable, Se
         case .emerging: "新興国株"
         case .nanotech: "ナノテク"
         case .genomics: "遺伝子工学"
+        case .developedBond: "先進国債券"
         }
     }
 

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 2,
-  "datasetVersion": "mufg-20260907-ba1c97666b56",
+  "datasetVersion": "mufg-20260907-6b11d6fe48ea",
   "isSample": false,
-  "publishedAt": "2026-09-07T15:15:59Z",
+  "publishedAt": "2026-09-07T15:47:02Z",
   "funds": [
     {
       "id": "all-country",
@@ -83,6 +83,15 @@
       "path": "funds/genomics.json",
       "contentVersion": "fund-19990ff67b787a6ef6493fc7d5456708b995af53539a2217b97debe704fef096",
       "firstDate": "2018-08-06",
+      "lastDate": "2026-09-07"
+    },
+    {
+      "id": "developed-bond",
+      "displayName": "ｅＭＡＸＩＳ Ｓｌｉｍ 先進国債券インデックス（除く日本）",
+      "currency": "JPY",
+      "path": "funds/developed-bond.json",
+      "contentVersion": "fund-68a76cc6e3ad39e4687d4222b1ee1358f363d97b81d97f1a4f26a6d11ffe261c",
+      "firstDate": "2017-02-27",
       "lastDate": "2026-09-07"
     }
   ]

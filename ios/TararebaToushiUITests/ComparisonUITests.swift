@@ -323,10 +323,11 @@ final class ComparisonUITests: XCTestCase {
 
     @MainActor private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
         let top = app.windows.firstMatch.frame.minY + Self.tappableTop
-        for _ in 0..<8 {
-            guard element.isHittable else { app.swipeUp(); continue }
-            if element.frame.minY >= top { return }
-            app.swipeDown()
+        for _ in 0..<10 {
+            if element.isHittable, element.frame.minY >= top { return }
+            // The frame says which way the element sits even while it is off screen,
+            // so scrolling the wrong way never pushes it further out of reach.
+            if element.exists, element.frame.minY < top { app.swipeDown() } else { app.swipeUp() }
         }
         XCTAssertTrue(element.isHittable && element.frame.minY >= top)
     }

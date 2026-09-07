@@ -7,12 +7,13 @@ nonisolated enum Fixtures {
     static func snapshot(
         version: String = "sample-v1", a: String = "12000", b: String = "14000", c: String = "13000",
         d: String = "16000", e: String = "15000", f: String = "17000", g: String = "18000",
-        h: String = "19000", i: String = "20000", mode: DatasetMode = .sample
+        h: String = "19000", i: String = "20000", j: String = "21000", mode: DatasetMode = .sample
     ) -> DatasetSnapshot {
         let ids = mode.fundIDs
-        let finals = [a, b, c, d, e, f, g, h, i]
+        let finals = [a, b, c, d, e, f, g, h, i, j]
         let names = [
             "オルカン", "S&P500", "TOPIX", "NASDAQ100", "日経平均", "純金", "新興国株", "ナノテク", "遺伝子工学",
+            "先進国債券",
         ]
         let dates = ["2024-12-30", "2025-01-06", "2026-09-04"]
         let funds = ids.enumerated()
