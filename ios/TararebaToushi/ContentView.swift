@@ -74,7 +74,7 @@ struct ContentView: View {
                 .font(.system(.largeTitle, design: .rounded, weight: .bold))
                 .tracking(-0.6)
                 .accessibilityAddTraits(.isHeader)
-            Text("同じ条件で、オルカンとS&P500を比べてみよう。")
+            Text("同じ条件で、選んだ投資信託を比べてみよう。")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
             if repository.configuration.mode == .sample {
@@ -88,6 +88,13 @@ struct ContentView: View {
 
     private var inputCard: some View {
         VStack(alignment: .leading, spacing: 20) {
+            if let dataset = repository.dataset {
+                FundPickerView(
+                    funds: dataset.funds.map(\.descriptor),
+                    selection: model.selectedIDs(in: dataset),
+                    onToggle: { model.toggle($0, in: dataset) })
+                Divider()
+            }
             VStack(alignment: .leading, spacing: 10) {
                 Text("開始日")
                     .font(.subheadline.weight(.medium))
@@ -116,13 +123,19 @@ struct ContentView: View {
                         .font(.title3)
                         .foregroundStyle(.secondary)
                 }
-                Text("それぞれに同じ金額を投資した場合を比較します。")
+                Text("選んだ商品それぞれに、同じ金額を投資した場合を比較します。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
         .cardSurface()
+    }
+
+    private var simulateTitle: String {
+        guard let dataset = repository.dataset else { return "比較する" }
+        let count = model.selectedIDs(in: dataset).count
+        return count == 1 ? "結果を見る" : "\(count)つを比較する"
     }
 
     private var simulateButton: some View {
@@ -132,7 +145,7 @@ struct ContentView: View {
             model.recalculate(dataset: repository.dataset)
             if model.result != nil { showsResults = true }
         } label: {
-            Text("2つを比較する")
+            Text(simulateTitle)
                 .font(.headline)
                 .foregroundStyle(Color(uiColor: .systemBackground))
                 .frame(maxWidth: .infinity)

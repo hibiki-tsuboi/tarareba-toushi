@@ -22,6 +22,9 @@ nonisolated struct AppConfiguration: Sendable {
     // Preserve existing downloaded snapshots across the wire-format migration.
     static let snapshotStorageVersion = 1
     static let maximumAmount = 1_000_000_000
+    // A comparison stays legible while the series stay visually distinct.
+    static let maximumComparisonFunds = 5
+    static let defaultComparisonFunds = 2
     static let initialAmount = 1_000_000
     static let initialDate = "2025-01-01"
     static let maximumResponseBytes = 2 * 1024 * 1024

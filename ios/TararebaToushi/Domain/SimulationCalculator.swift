@@ -3,6 +3,8 @@ import Foundation
 nonisolated struct SimulationInput: Codable, Sendable {
     var amount: Int
     var requestedDate: String
+    // Absent in snapshots saved before selection existed; nil means the default pair.
+    var fundIDs: [String]? = nil
 }
 
 nonisolated struct ValuationPoint: Identifiable, Sendable {
@@ -21,13 +23,7 @@ nonisolated struct FundResult: Identifiable, Sendable {
     let displayedValuation: Decimal
     let displayedProfit: Decimal
 
-    var shortName: String {
-        let fund = InvestmentFund.allCases.first {
-            id == $0.dataID(isSample: false) || id == $0.dataID(isSample: true)
-        }
-        guard let fund else { return descriptor.displayName }
-        return fund.displayName + (id.hasPrefix("demo-") ? "（サンプル）" : "")
-    }
+    var shortName: String { descriptor.shortName }
 }
 
 nonisolated struct SimulationResult: Sendable {
@@ -37,15 +33,26 @@ nonisolated struct SimulationResult: Sendable {
     let startDate: TradingDay
     let endDate: TradingDay
     let funds: [FundResult]
+    // Signed, and only meaningful for exactly two funds: funds[1] - funds[0].
     let displayedDifference: Decimal
+
+    var ranking: [FundResult] {
+        funds.sorted { $0.displayedValuation > $1.displayedValuation }
+    }
+
+    var displayedSpread: Decimal {
+        let values = funds.map(\.displayedValuation)
+        guard let high = values.max(), let low = values.min() else { return 0 }
+        return high - low
+    }
 }
 
 nonisolated enum ComparisonDateResolver {
-    static func dates(for requested: TradingDay, in dataset: ValidatedDataset) throws -> [TradingDay] {
-        guard requested >= dataset.earliestRequestedDate, requested <= dataset.endDate else {
-            throw DataIssue("この期間のデータがありません。\(dataset.earliestRequestedDate.label)〜\(dataset.endDate.label)から選んでください。")
+    static func dates(for requested: TradingDay, in window: ComparisonWindow) throws -> [TradingDay] {
+        guard requested >= window.earliestRequestedDate, requested <= window.endDate else {
+            throw DataIssue("この期間のデータがありません。\(window.earliestRequestedDate.label)〜\(window.endDate.label)から選んでください。")
         }
-        let dates = dataset.commonDates.filter { $0 >= requested }
+        let dates = window.dates.filter { $0 >= requested }
         guard !dates.isEmpty else { throw DataIssue("比較できる共通日がありません。") }
         return dates
     }
@@ -56,11 +63,12 @@ nonisolated enum SimulationCalculator {
         guard (1...AppConfiguration.maximumAmount).contains(input.amount) else {
             throw DataIssue("投資金額は1円〜10億円で入力してください。")
         }
+        let selected = try dataset.funds(for: input.fundIDs ?? dataset.defaultSelection)
         let requested = try TradingDay(input.requestedDate)
-        let dates = try ComparisonDateResolver.dates(for: requested, in: dataset)
+        let dates = try ComparisonDateResolver.dates(for: requested, in: try dataset.window(for: selected))
         guard let start = dates.first, let end = dates.last else { throw DataIssue("比較期間がありません。") }
         let principal = Decimal(input.amount)
-        let results = try dataset.funds.map { fund in
+        let results = try selected.map { fund in
             guard let initial = fund.values[start], initial > 0 else { throw DataIssue("開始日の値が不正です。") }
             let points = try dates.map { day in
                 guard let value = fund.values[day], value > 0 else { throw DataIssue("比較日の値が不正です。") }
@@ -75,11 +83,11 @@ nonisolated enum SimulationCalculator {
                 profit: last.amount - principal, returnPercent: (endValue / initial - 1) * 100,
                 displayedValuation: rounded, displayedProfit: rounded - principal)
         }
-        guard results.count == 2 else { throw DataIssue("2商品の比較が必要です。") }
         return SimulationResult(
             isSample: dataset.snapshot.manifest.isSample,
-            input: input, requestedDate: requested, startDate: start, endDate: end,
-            funds: results, displayedDifference: results[1].displayedValuation - results[0].displayedValuation)
+            input: input, requestedDate: requested, startDate: start, endDate: end, funds: results,
+            displayedDifference: results.count == 2
+                ? results[1].displayedValuation - results[0].displayedValuation : 0)
     }
 }
 

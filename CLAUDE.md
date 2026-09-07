@@ -110,7 +110,8 @@ npm run dev                 # wrangler dev（public/ をローカル配信して
 - `Data/RemoteDataSource.swift` — 一覧を取得し、`contentVersion` が変わった商品の履歴だけダウンロード。一覧と履歴が食い違えば一覧から**1回だけ**再取得し、揃わなければ既存を保持します。
 - `Data/LocalSnapshotStore.swift` — Application Support配下に検証済みの単一スナップショットをatomic書き込み。バックアップ対象から除外。`origin == .bundled` の旧開発版キャッシュは採用しません。
 - `Domain/TradingDay.swift` — グレゴリオ暦・Asia/Tokyo固定の暦日。端末のカレンダー・タイムゾーンに依存しません。
-- `Domain/SimulationCalculator.swift` — 内部はすべて`Decimal`。評価額を1円へ四捨五入してから表示損益・差額を求めます（丸め後の値どうしで計算）。`Double`はグラフ描画時のみ。
+- `Domain/SimulationCalculator.swift` — 内部はすべて`Decimal`。評価額を1円へ四捨五入してから表示損益・差額を求めます（丸め後の値どうしで計算）。`Double`はグラフ描画時のみ。計算対象は `SimulationInput.fundIDs` の選択商品だけで、結果は配信順（オルカン→S&P500）に並べます。
+- `Models/Dataset.swift` — `ValidatedDataset.window(for:)` が**選択商品だけの共通観測日**を返します。全商品の積集合は取りません（履歴の短い商品を1つ足しただけで、無関係な商品の比較期間まで縮むため）。同時比較は `AppConfiguration.maximumComparisonFunds`（5商品）まで、既定は先頭2商品。
 
 ### iOSのコードの前提
 
@@ -124,7 +125,7 @@ npm run dev                 # wrangler dev（public/ をローカル配信して
 
 - **アプリに価格データを同梱しない。** `ios/TararebaToushi/` 配下（`.xcassets` を除く）に `.json` / `.jsonc` / `.csv` があると `npm run validate` と `verify:app` が失敗します。テスト用フィクスチャはテストターゲット内、UIテストの応答はランナーの環境変数（`--ui-testing` + `TARAREBA_TEST_*`）で渡します。
 - **取得元はAPIのみ。** CSVの取得・解析、再投資基準価額や税引前分配金の保存はしません。信託報酬の再控除もしません。
-- **既存の日付と値は書き換えない。** 補間・丸め直し・株価指数の接ぎ足しをせず、2商品の共通観測日だけで計算します。
+- **既存の日付と値は書き換えない。** 補間・丸め直し・株価指数の接ぎ足しをせず、選択商品の共通観測日だけで計算します。
 - `DatasetValidator.supportsValueBasis` の `reinvestedIndex` 許可は、2026-09-07に通常基準価額と同値だと監査した版（`mufg-20260904-6c4cf880560d`）の**商品別ハッシュ一致時のみ**です。未確認の再投資系列を通常基準価額として扱ってはいけません。
 - 認証情報（`CLOUDFLARE_API_TOKEN` など）をiOSアプリ・`public/`・ソース・チャットに入れないこと。`.dev.vars*` / `.env*` はgitignore済み。
 - コミットメッセージは絵文字＋日本語の要約（例: `✨ オルカンとS&P500の同時比較に対応`、`♻️ …`、`🐛 …`、`🔧 …`）。

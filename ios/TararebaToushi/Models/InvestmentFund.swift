@@ -17,3 +17,14 @@ nonisolated enum InvestmentFund: String, CaseIterable, Codable, Identifiable, Se
         isSample ? "demo-\(rawValue)" : rawValue
     }
 }
+
+extension FundDescriptor {
+    // Known funds get a short label; anything delivered later falls back to its name.
+    var shortName: String {
+        let fund = InvestmentFund.allCases.first {
+            id == $0.dataID(isSample: false) || id == $0.dataID(isSample: true)
+        }
+        guard let fund else { return displayName }
+        return fund.displayName + (id.hasPrefix("demo-") ? "（サンプル）" : "")
+    }
+}

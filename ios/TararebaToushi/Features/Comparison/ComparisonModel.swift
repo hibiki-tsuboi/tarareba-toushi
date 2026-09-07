@@ -5,6 +5,7 @@ import Observation
 final class ComparisonModel {
     var amountText: String
     var selectedDate: Date
+    private(set) var selection: [String]
     private(set) var result: SimulationResult?
     private(set) var inputError: String?
     @ObservationIgnored private let defaults: UserDefaults
@@ -24,6 +25,8 @@ final class ComparisonModel {
         amountText = MoneyFormat.number(Decimal(amount))
         // Constants are parsed through the same strict path as remote civil dates.
         selectedDate = (try? TradingDay(saved?.requestedDate ?? AppConfiguration.initialDate).date) ?? Date()
+        // Empty means "not chosen yet"; the dataset decides the default pair.
+        selection = saved?.fundIDs ?? []
         #if DEBUG
             if ProcessInfo.processInfo.arguments.contains("--ui-testing") {
                 amountText = ProcessInfo.processInfo.environment["TARAREBA_TEST_AMOUNT"] ?? "1,000,000"
@@ -36,6 +39,32 @@ final class ComparisonModel {
         #endif
     }
 
+    // Selections are kept in delivered order so colours match the result cards.
+    func selectedIDs(in dataset: ValidatedDataset) -> [String] {
+        let chosen = Set(selection)
+        let known = dataset.funds.map(\.descriptor.id).filter { chosen.contains($0) }
+        return known.isEmpty ? dataset.defaultSelection : known
+    }
+
+    func toggle(_ id: String, in dataset: ValidatedDataset) {
+        var chosen = Set(selectedIDs(in: dataset))
+        if chosen.contains(id) {
+            guard chosen.count > 1 else {
+                inputError = "商品を1つ以上選んでください。"
+                return
+            }
+            chosen.remove(id)
+        } else {
+            guard chosen.count < AppConfiguration.maximumComparisonFunds else {
+                inputError = "同時に比較できるのは\(AppConfiguration.maximumComparisonFunds)商品までです。"
+                return
+            }
+            chosen.insert(id)
+        }
+        inputError = nil
+        selection = dataset.funds.map(\.descriptor.id).filter { chosen.contains($0) }
+    }
+
     func recalculate(dataset: ValidatedDataset?) {
         result = nil
         inputError = nil
@@ -43,7 +72,8 @@ final class ComparisonModel {
         do {
             let input = SimulationInput(
                 amount: try MoneyFormat.parseAmount(amountText),
-                requestedDate: try TradingDay(date: selectedDate).rawValue)
+                requestedDate: try TradingDay(date: selectedDate).rawValue,
+                fundIDs: selectedIDs(in: dataset))
             result = try SimulationCalculator.calculate(input, dataset: dataset)
             defaults.set(try JSONEncoder().encode(input), forKey: "comparison.input.v1")
         } catch { inputError = error.localizedDescription }
@@ -53,12 +83,5 @@ final class ComparisonModel {
         if let amount = try? MoneyFormat.parseAmount(amountText) {
             amountText = MoneyFormat.number(Decimal(amount))
         }
-    }
-
-    func preset(years: Int, dataset: ValidatedDataset?) -> TradingDay? {
-        guard let dataset, let day = try? dataset.endDate.yearsBefore(years),
-            day >= dataset.earliestRequestedDate, day <= dataset.endDate
-        else { return nil }
-        return day
     }
 }

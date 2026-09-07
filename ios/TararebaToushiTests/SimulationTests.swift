@@ -63,6 +63,69 @@ struct SimulationTests {
         #expect(MoneyFormat.signed(Decimal(string: "-0.01") ?? 0, digits: 1) == "0.0")
     }
 
+    @Test func selectingOneFundDropsTheComparison() throws {
+        let dataset = try Fixtures.validated()
+        let result = try SimulationCalculator.calculate(
+            .init(amount: 1_000_000, requestedDate: "2025-01-06", fundIDs: ["demo-sp500"]), dataset: dataset)
+        #expect(result.funds.map(\.id) == ["demo-sp500"])
+        #expect(result.funds[0].displayedValuation == 1_400_000)
+        #expect(result.displayedDifference == 0)
+        #expect(result.displayedSpread == 0)
+    }
+
+    @Test func selectionKeepsDeliveredOrderRegardlessOfRequestOrder() throws {
+        let dataset = try Fixtures.validated()
+        let result = try SimulationCalculator.calculate(
+            .init(amount: 1_000_000, requestedDate: "2025-01-06", fundIDs: ["demo-sp500", "demo-all-country"]),
+            dataset: dataset)
+        #expect(result.funds.map(\.id) == ["demo-all-country", "demo-sp500"])
+        #expect(result.displayedDifference == 200_000)
+    }
+
+    @Test func unknownAndOversizedSelectionsAreRejected() throws {
+        let dataset = try Fixtures.validated()
+        #expect(throws: DataIssue.self) {
+            try SimulationCalculator.calculate(
+                .init(amount: 1_000_000, requestedDate: "2025-01-06", fundIDs: ["demo-nikkei"]), dataset: dataset)
+        }
+        let dates = ["2025-01-06", "2026-09-04"]
+        let many = try Fixtures.dataset((0...5).map {
+            (id: "fund-\($0)", dates: dates, values: ["10000", "11000"])
+        })
+        #expect(throws: DataIssue.self) { try many.funds(for: many.funds.map(\.descriptor.id)) }
+        #expect(try many.funds(for: Array(many.funds.prefix(5).map(\.descriptor.id))).count == 5)
+    }
+
+    @Test func aShortHistoryOnlyLimitsTheFundsItIsComparedWith() throws {
+        let long = ["2020-01-06", "2025-01-06", "2026-09-04"]
+        let dataset = try Fixtures.dataset([
+            (id: "old-a", dates: long, values: ["10000", "12000", "15000"]),
+            (id: "old-b", dates: long, values: ["10000", "11000", "13000"]),
+            (id: "new-c", dates: ["2025-01-06", "2026-09-04"], values: ["10000", "20000"]),
+        ])
+        #expect(try dataset.window(for: ["old-a", "old-b"]).earliestRequestedDate.rawValue == "2020-01-06")
+        #expect(try dataset.window(for: ["old-a", "new-c"]).earliestRequestedDate.rawValue == "2025-01-06")
+        #expect(try dataset.window(for: ["old-a"]).dates.count == 3)
+        // The whole-catalog intersection must not decide the period of a pair.
+        #expect(try dataset.window(for: ["old-a", "old-b"]).dates.count == 3)
+    }
+
+    @Test func threeFundsRankByValuationAndReportTheWidestGap() throws {
+        let dates = ["2025-01-06", "2026-09-04"]
+        let dataset = try Fixtures.dataset([
+            (id: "fund-a", dates: dates, values: ["10000", "12000"]),
+            (id: "fund-b", dates: dates, values: ["10000", "9000"]),
+            (id: "fund-c", dates: dates, values: ["10000", "15000"]),
+        ])
+        let result = try SimulationCalculator.calculate(
+            .init(amount: 1_000_000, requestedDate: "2025-01-06", fundIDs: ["fund-a", "fund-b", "fund-c"]),
+            dataset: dataset)
+        #expect(result.funds.map(\.id) == ["fund-a", "fund-b", "fund-c"])
+        #expect(result.ranking.map(\.id) == ["fund-c", "fund-a", "fund-b"])
+        #expect(result.displayedSpread == 600_000)
+        #expect(result.displayedDifference == 0)
+    }
+
     @Test(arguments: [0, -1, 1_000_000_001]) func invalidAmounts(amount: Int) throws {
         let dataset = try Fixtures.validated()
         #expect(throws: DataIssue.self) {
@@ -105,7 +168,8 @@ struct SimulationTests {
     @Test(arguments: ["2020-01-01", "2026-09-05"])
     func unavailablePeriod(date: String) throws {
         let dataset = try Fixtures.validated()
-        #expect(throws: DataIssue.self) { try ComparisonDateResolver.dates(for: TradingDay(date), in: dataset) }
+        let window = try dataset.window(for: dataset.defaultSelection)
+        #expect(throws: DataIssue.self) { try ComparisonDateResolver.dates(for: TradingDay(date), in: window) }
     }
 
     @Test(arguments: ["2025-02-30", "2025-02-29", "2026-13-01", "2025-1-01", "2025-01-00", "0000-01-01"])

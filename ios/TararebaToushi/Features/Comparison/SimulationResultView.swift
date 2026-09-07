@@ -18,7 +18,9 @@ struct SimulationResultView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("それぞれに\(MoneyFormat.yen(Decimal(result.input.amount)))を投資していたら")
+                    Text(result.funds.count == 1
+                        ? "\(MoneyFormat.yen(Decimal(result.input.amount)))を投資していたら"
+                        : "それぞれに\(MoneyFormat.yen(Decimal(result.input.amount)))を投資していたら")
                         .font(.title3.bold())
                         .accessibilityAddTraits(.isHeader)
                     Text("\(result.startDate.label) 〜 \(result.endDate.label)")
@@ -30,7 +32,9 @@ struct SimulationResultView: View {
                         FundResultCardView(result: fund, index: index)
                     }
                 }
-                DifferenceCardView(result: result)
+                if result.funds.count > 1 {
+                    ComparisonSummaryCardView(result: result)
+                }
                 VStack(alignment: .leading, spacing: 6) {
                     if !result.isSample {
                         Text("三菱UFJアセットマネジメント公表データをもとに、たられば投資が独自に算出しています。")

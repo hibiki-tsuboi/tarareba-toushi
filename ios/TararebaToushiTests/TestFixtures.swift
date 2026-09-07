@@ -35,6 +35,37 @@ nonisolated enum Fixtures {
         try DatasetValidator.validate(snapshot, mode: .sample)
     }
 
+    // The validator still pins live data to the two delivered funds, so multi-fund
+    // datasets are assembled directly to exercise the domain at N funds.
+    static func dataset(_ funds: [(id: String, dates: [String], values: [String])]) throws -> ValidatedDataset {
+        let validated = try funds.map { fund in
+            let descriptor = FundDescriptor(
+                id: fund.id, displayName: fund.id, currency: "JPY", path: "funds/\(fund.id).json",
+                firstDate: fund.dates[0], lastDate: fund.dates[fund.dates.count - 1])
+            let series = FundSeries(
+                schemaVersion: 2, datasetVersion: "fund-test", isSample: false, fundId: fund.id,
+                currency: "JPY", valueBasis: "nav",
+                source: DataSourceDescription(
+                    kind: "official", name: "テスト専用の架空値", url: "https://example.com/fund",
+                    note: "実績ではありません"),
+                observations: zip(fund.dates, fund.values).map { FundObservation(date: $0, value: $1) })
+            var values: [TradingDay: Decimal] = [:]
+            for observation in series.observations {
+                values[try TradingDay(observation.date)] = try DatasetValidator.decimal(observation.value)
+            }
+            return ValidatedFund(descriptor: descriptor, series: series, values: values)
+        }
+        let manifest = Manifest(
+            schemaVersion: 2, datasetVersion: "multi", isSample: false,
+            publishedAt: "2026-09-06T00:00:00Z", funds: validated.map(\.descriptor))
+        guard let latest = try validated.map({ try TradingDay($0.descriptor.lastDate) }).max() else {
+            throw DataIssue("商品がありません。")
+        }
+        return ValidatedDataset(
+            snapshot: DatasetSnapshot(manifest: manifest, series: validated.map(\.series)),
+            funds: validated, latestDate: latest)
+    }
+
     static func envelope(_ snapshot: DatasetSnapshot = snapshot(), checkedAt: Date? = nil) -> StoredSnapshot {
         StoredSnapshot(
             identity: AppConfiguration(mode: snapshot.manifest.isSample ? .sample : .live).cacheIdentity,

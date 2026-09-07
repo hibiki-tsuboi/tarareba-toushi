@@ -157,8 +157,43 @@ import Testing
         #expect(model.inputError != nil)
         #expect(ComparisonModel(defaults: defaults).amountText == "2,000,000")
         #expect(await transport.count == 0)
-        #expect(model.preset(years: 5, dataset: repo.dataset) == nil)
-        #expect(model.preset(years: 1, dataset: repo.dataset)?.rawValue == "2025-09-04")
+    }
+
+    @Test func selectionIsSavedAndRestoredAndKeepsAtLeastOneFund() throws {
+        let name = "tests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let dataset = try Fixtures.validated()
+        let model = ComparisonModel(defaults: defaults)
+        #expect(model.selectedIDs(in: dataset) == ["demo-all-country", "demo-sp500"])
+
+        model.toggle("demo-all-country", in: dataset)
+        #expect(model.selectedIDs(in: dataset) == ["demo-sp500"])
+        model.toggle("demo-sp500", in: dataset)
+        #expect(model.selectedIDs(in: dataset) == ["demo-sp500"])
+        #expect(model.inputError != nil)
+
+        model.recalculate(dataset: dataset)
+        #expect(model.result?.funds.map(\.id) == ["demo-sp500"])
+        let restored = ComparisonModel(defaults: defaults)
+        #expect(restored.selectedIDs(in: dataset) == ["demo-sp500"])
+
+        restored.toggle("demo-all-country", in: dataset)
+        #expect(restored.selectedIDs(in: dataset) == ["demo-all-country", "demo-sp500"])
+    }
+
+    @Test func unknownSavedSelectionFallsBackToTheDefaultPair() throws {
+        let name = "tests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        defaults.set(
+            Data(#"{"amount":1000000,"requestedDate":"2025-01-06","fundIDs":["live-only"]}"#.utf8),
+            forKey: "comparison.input.v1")
+        let model = ComparisonModel(defaults: defaults)
+        let dataset = try Fixtures.validated()
+        #expect(model.selectedIDs(in: dataset) == ["demo-all-country", "demo-sp500"])
+        model.recalculate(dataset: dataset)
+        #expect(model.result?.funds.count == 2)
     }
 
     @Test(arguments: [

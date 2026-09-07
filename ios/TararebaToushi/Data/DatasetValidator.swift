@@ -55,12 +55,13 @@ nonisolated enum DatasetValidator {
 
     static func validate(_ snapshot: DatasetSnapshot, mode: DatasetMode) throws -> ValidatedDataset {
         try validateManifest(snapshot.manifest, mode: mode)
-        guard snapshot.series.count == 2, Set(snapshot.series.map(\.fundId)) == Set(mode.fundIDs) else {
-            throw DataIssue("比較に必要な2商品の履歴が揃っていません。")
+        guard snapshot.series.count == mode.fundIDs.count,
+            Set(snapshot.series.map(\.fundId)) == Set(mode.fundIDs)
+        else {
+            throw DataIssue("比較に必要な商品の履歴が揃っていません。")
         }
         var funds: [ValidatedFund] = []
-        var common: Set<TradingDay>?
-        var firstDates: [TradingDay] = []
+        var latest: TradingDay?
         for id in mode.fundIDs {
             guard let descriptor = snapshot.manifest.funds.first(where: { $0.id == id }),
                 let series = snapshot.series.first(where: { $0.fundId == id }),
@@ -92,9 +93,8 @@ nonisolated enum DatasetValidator {
                 values[day] = try decimal(observation.value)
                 previous = day
             }
-            let dates = Set(values.keys)
-            common = common.map { $0.intersection(dates) } ?? dates
-            firstDates.append(try TradingDay(descriptor.firstDate))
+            let lastDate = try TradingDay(descriptor.lastDate)
+            latest = latest.map { Swift.max($0, lastDate) } ?? lastDate
             var displaySeries = series
             if mode == .live, series.valueBasis == "reinvestedIndex" {
                 // This exact legacy edition was verified to contain ordinary NAVs.
@@ -104,13 +104,11 @@ nonisolated enum DatasetValidator {
             }
             funds.append(ValidatedFund(descriptor: descriptor, series: displaySeries, values: values))
         }
-        let dates = (common ?? []).sorted()
-        guard let end = dates.last, let earliest = firstDates.max() else {
-            throw DataIssue("両方のデータが揃う日がありません。")
-        }
-        return ValidatedDataset(
-            snapshot: snapshot, funds: funds, commonDates: dates,
-            earliestRequestedDate: earliest, endDate: end)
+        guard let latest else { throw DataIssue("比較できる商品がありません。") }
+        let dataset = ValidatedDataset(snapshot: snapshot, funds: funds, latestDate: latest)
+        // Reject data that cannot produce the comparison shown on first launch.
+        _ = try dataset.window(for: dataset.defaultSelection)
+        return dataset
     }
 
     private static func supportsValueBasis(_ series: FundSeries, mode: DatasetMode) -> Bool {

@@ -8,8 +8,9 @@ final class ComparisonUITests: XCTestCase {
         XCTAssertTrue(app.textFields["investment-amount"].exists)
         XCTAssertTrue(app.datePickers["investment-date"].exists)
         XCTAssertEqual(app.buttons["simulate"].label, "2つを比較する")
-        XCTAssertFalse(app.buttons["fund-all-country"].exists)
-        XCTAssertFalse(app.buttons["fund-sp500"].exists)
+        XCTAssertTrue(app.buttons["fund-all-country"].isSelected)
+        XCTAssertTrue(app.buttons["fund-sp500"].isSelected)
+        XCTAssertEqual(app.staticTexts["fund-selection-count"].label, "5商品中2商品を選択中")
         XCTAssertFalse(app.staticTexts["valuation-all-country"].exists)
         XCTAssertFalse(app.buttons["preset-5"].exists)
         capture(app, name: "comparison-input")
@@ -43,6 +44,38 @@ final class ComparisonUITests: XCTestCase {
         capture(app, name: "comparison-data-information")
         app.buttons["閉じる"].tap()
         XCTAssertTrue(app.staticTexts["valuation-all-country"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor func testCheckingOneFundShowsOnlyThatResultAndNoDifference() {
+        let app = UITestFixtures.app(mode: "live")
+        app.launch()
+        waitForSimulation(app)
+        app.buttons["fund-all-country"].tap()
+        XCTAssertFalse(app.buttons["fund-all-country"].isSelected)
+        XCTAssertEqual(app.buttons["simulate"].label, "結果を見る")
+        capture(app, name: "single-fund-input")
+
+        simulate(app)
+        XCTAssertTrue(app.staticTexts["valuation-sp500"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["valuation-sp500"].label, "1,400,000円")
+        XCTAssertFalse(app.staticTexts["valuation-all-country"].exists)
+        XCTAssertFalse(app.staticTexts["comparison-difference"].exists)
+        XCTAssertFalse(app.staticTexts["comparison-summary"].exists)
+        capture(app, name: "single-fund-results")
+
+        // The last remaining fund cannot be cleared.
+        tapVisible(app.buttons["edit-input"], in: app)
+        XCTAssertTrue(app.buttons["fund-sp500"].waitForExistence(timeout: 5))
+        app.buttons["fund-sp500"].tap()
+        XCTAssertTrue(app.buttons["fund-sp500"].isSelected)
+        XCTAssertEqual(app.staticTexts["input-error"].label, "商品を1つ以上選んでください。")
+
+        // The selection survives a relaunch.
+        app.terminate()
+        app.launch()
+        waitForSimulation(app)
+        XCTAssertFalse(app.buttons["fund-all-country"].isSelected)
+        XCTAssertTrue(app.buttons["fund-sp500"].isSelected)
     }
 
     @MainActor func testBothFundsUseChangedAmountAndPreserveInput() {

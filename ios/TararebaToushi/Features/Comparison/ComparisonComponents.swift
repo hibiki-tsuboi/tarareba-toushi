@@ -3,7 +3,13 @@ import SwiftUI
 enum AppPalette {
     static let teal = Color("InvestmentTeal")
     static let blue = Color("InvestmentBlue")
-    static func series(_ index: Int) -> Color { index == 0 ? teal : blue }
+    // Hues stay far apart so up to five lines and figures remain tellable apart.
+    static let seriesColors = [
+        teal, blue, Color("InvestmentViolet"), Color("InvestmentAmber"), Color("InvestmentRose"),
+    ]
+    static func series(_ index: Int) -> Color {
+        seriesColors[min(max(index, 0), seriesColors.count - 1)]
+    }
 }
 
 extension View {
@@ -79,11 +85,19 @@ struct FundResultCardView: View {
     }
 }
 
-struct DifferenceCardView: View {
+struct ComparisonSummaryCardView: View {
     let result: SimulationResult
-    private var higherFund: String? {
-        guard result.displayedDifference != 0 else { return nil }
-        return result.funds[result.displayedDifference > 0 ? 1 : 0].shortName
+    private var leader: FundResult? { result.ranking.first }
+    private var isTied: Bool { result.displayedSpread == 0 }
+
+    private var summary: String {
+        guard let leader, !isTied else {
+            return result.funds.count == 2
+                ? "表示上の差額は0円。同じ結果でした。" : "表示上の金額はすべて同じ結果でした。"
+        }
+        return result.funds.count == 2
+            ? "この期間では、\(leader.shortName)のほうが多い結果でした。"
+            : "この期間で最も多かったのは\(leader.shortName)でした。"
     }
 
     var body: some View {
@@ -92,21 +106,41 @@ struct DifferenceCardView: View {
                 HStack(alignment: .firstTextBaseline, spacing: 12) { difference }
                 VStack(alignment: .leading, spacing: 8) { difference }
             }
-            Text(higherFund.map { "この期間では、\($0)のほうが多い結果でした。" }
-                ?? "表示上の差額は0円。同じ結果でした。")
+            Text(summary)
                 .font(.subheadline)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("comparison-summary")
+            if result.funds.count > 2 {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(Array(result.ranking.enumerated()), id: \.element.id) { rank, fund in
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Text("\(rank + 1).")
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                            Text(fund.shortName)
+                                .font(.subheadline)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Spacer(minLength: 8)
+                            Text(MoneyFormat.yen(fund.displayedValuation))
+                                .font(.subheadline.weight(.medium))
+                                .monospacedDigit()
+                        }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityIdentifier("rank-\(fund.id)")
+                    }
+                }
+                .padding(.top, 4)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .cardSurface()
     }
 
     @ViewBuilder private var difference: some View {
-        Text("この期間の差額")
+        Text(result.funds.count == 2 ? "この期間の差額" : "この期間の最大差")
             .font(.subheadline)
             .foregroundStyle(.secondary)
-        Text(MoneyFormat.yen(abs(result.displayedDifference)))
+        Text(MoneyFormat.yen(result.displayedSpread))
             .font(.system(.title3, design: .rounded, weight: .bold))
             .monospacedDigit()
             .accessibilityIdentifier("comparison-difference")
