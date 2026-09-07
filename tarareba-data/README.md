@@ -35,19 +35,9 @@ npm test
 
 詳細は [公式データの取り込み](../docs/mufg-data.md) と [データ形式](../docs/data-format.md) を参照してください。
 
-## 固定URLへの移行
+## 固定URLへの移行（完了）
 
-```sh
-npm run migrate:fixed
-npm run validate
-npm test
-```
-
-この移行はローカルの通常基準価額を使い、API通信・価格変更・デプロイを行いません。移行済みなら何も変更しません。今回の配信JSONは移行済みです。以前の `npm run migrate:nav` は、通常基準価額との一致を確認した特定の旧履歴だけを通信せず移行するものです。
-
-新アプリは配信形式1・2と従来の端末キャッシュを読み込めます。新アプリを先に更新し、その後に配信側を切り替えてください。旧アプリは形式2を読めず、取得済みのキャッシュだけを利用できます。公開済みの版付き履歴は移行中の旧URL利用に備えて残しますが、今後の実データ更新では新しい版付きファイルを作りません。
-
-今回の固定URL対応は未デプロイです。
+2026-09-07に通常基準価額（`valueBasis: "nav"`）と商品別固定URL（`schemaVersion: 2`）への移行を完了し、移行スクリプト `migrate:nav` / `migrate:fixed` と公開済みの版付き履歴は削除しました。アプリ未公開のため、版付きURLの後方互換は不要です。実データは `live/funds/<商品ID>.json` の2ファイルだけで、更新のたびに版付きファイルが増えることはありません。
 
 ## 日次更新と公開
 
@@ -87,4 +77,4 @@ npm test
 npm run generate -- --start 2020-01-06 --end 2026-09-04 --seed 43 --version sample-v2
 ```
 
-`npm run validate` はiOSのソース配下に価格データファイルがないことも確認します。ビルド済みアプリは `npm run verify:app -- <TararebaToushi.appの絶対パス>` で確認できます。`public/test.json` は従来の疎通確認用です。
+`npm run validate` はiOSのソース配下に価格データファイルがないことも確認します。ビルド済みアプリは `npm run verify:app -- <TararebaToushi.appの絶対パス>` で確認できます。

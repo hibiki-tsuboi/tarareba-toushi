@@ -6,8 +6,6 @@
   "scripts": {
     "generate": "node scripts/generate-sample.mjs",
     "fetch:mufg": "node scripts/fetch-mufg.mjs",
-    "migrate:nav": "node scripts/migrate-nav.mjs",
-    "migrate:fixed": "node scripts/migrate-fixed-urls.mjs",
     "publish:status": "node scripts/check-published.mjs status",
     "publish:verify": "node scripts/check-published.mjs verify",
     "validate": "node scripts/validate.mjs",

@@ -5,7 +5,6 @@ import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { funds, latestURL, datedURL, parseFundInformation, createSnapshot, writeSnapshot, fetchBytes,
     updateFromMufg, readSnapshot } from '../scripts/fetch-mufg.mjs';
-import { migratedSnapshot, verifiedVersion } from '../scripts/migrate-nav.mjs';
 import { validate } from '../scripts/contract.mjs';
 
 // Fictional API responses; these tests never contact the provider.
@@ -195,21 +194,6 @@ test('a corrected latest NAV updates the same fixed URL without changing older o
     assert.notEqual(next.manifest.datasetVersion, before.manifest.datasetVersion);
     assert.equal(next.series[0].observations.at(-1).value, '9800');
     assert.deepEqual(next.series[0].observations.slice(0, -1), before.series[0].observations.slice(0, -1));
-});
-
-test('offline migration preserves every audited historical date and value and rejects unverified data', async () => {
-    const root = resolve(import.meta.dirname, '../public/live');
-    const series = await Promise.all(funds.map(f => readFile(resolve(root, `funds/${f.id}.${verifiedVersion}.json`), 'utf8').then(JSON.parse)));
-    const old = { manifest: { datasetVersion: verifiedVersion }, series };
-    const migrated = migratedSnapshot(old);
-    assert(migrated.series.every(s => s.valueBasis === 'nav'));
-    assert.deepEqual(migrated.series.map(s => s.observations), series.map(s => s.observations));
-    assert.strictEqual(migratedSnapshot(migrated), migrated);
-    const bad = structuredClone(old);
-    bad.series[0].observations[0].value = '9999';
-    assert.throws(() => migratedSnapshot(bad), /一致しません/);
-    bad.manifest.datasetVersion = 'unverified';
-    assert.throws(() => migratedSnapshot(bad), /未確認/);
 });
 
 test('live datasets require official sources, HTTPS attribution and separate identities', () => {
