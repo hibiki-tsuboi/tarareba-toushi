@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 
-export const ids = ['demo-all-country', 'demo-sp500'];
+export const ids = ['demo-all-country', 'demo-sp500', 'demo-topix'];
+// The funds the app compares. Extra products may be delivered alongside them.
 export const liveIDs = ['all-country', 'sp500'];
 export function day(value) {
     assert.match(value, /^\d{4}-\d{2}-\d{2}$/);

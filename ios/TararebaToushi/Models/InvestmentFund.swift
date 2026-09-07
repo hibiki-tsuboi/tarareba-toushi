@@ -3,6 +3,7 @@ import Foundation
 nonisolated enum InvestmentFund: String, CaseIterable, Codable, Identifiable, Sendable {
     case allCountry = "all-country"
     case sp500 = "sp500"
+    case topix = "topix"
 
     var id: String { rawValue }
 
@@ -10,6 +11,7 @@ nonisolated enum InvestmentFund: String, CaseIterable, Codable, Identifiable, Se
         switch self {
         case .allCountry: "オルカン"
         case .sp500: "S&P500"
+        case .topix: "TOPIX"
         }
     }
 

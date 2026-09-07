@@ -3,30 +3,45 @@ import { fileURLToPath } from 'node:url';
 import { resolve, dirname } from 'node:path';
 import { day, ids, validate } from './contract.mjs';
 
-export function generate({ start = '2020-01-06', end = '2026-09-04', seed = 42, version = 'sample-v1' } = {}) {
+// One drift per fund per cycle. A leader that changes between cycles keeps the
+// sample useful for checking rankings, not just a single winner.
+const cycles = [
+    [0.0016, 0.0011, 0.0006],
+    [-0.0014, -0.0009, -0.0004],
+    [0, 0, 0],
+    [0.0018, 0.0014, 0.0007],
+];
+
+export function generate({ start = '2020-01-06', end = '2026-09-04', seed = 42, version = 'sample-v2' } = {}) {
+    if (cycles.some(row => row.length !== ids.length)) {
+        throw new Error('商品数と架空データのドリフト定義が一致しません。');
+    }
     const from = day(start), to = day(end);
     if (from > to || (to - from) / 86400000 > 20_000 || !Number.isInteger(seed) || seed < 0 || seed > 0xffffffff) {
         throw new Error('期間またはシードが不正です。');
     }
-    let state = seed >>> 0;
-    const random = () => { state = (Math.imul(state, 1664525) + 1013904223) >>> 0; return state / 4294967296; };
-    const values = [10000, 10000];
-    const observations = [[], []];
+    // One stream per fund so adding a product never perturbs the existing series.
+    const streams = ids.map((_, f) => {
+        let state = (seed + Math.imul(f, 0x9e3779b1)) >>> 0;
+        return () => { state = (Math.imul(state, 1664525) + 1013904223) >>> 0; return state / 4294967296; };
+    });
+    const values = ids.map(() => 10000);
+    const observations = ids.map(() => []);
     let index = 0;
     for (let date = new Date(from); date <= to; date.setUTCDate(date.getUTCDate() + 1)) {
         if ([0, 6].includes(date.getUTCDay())) continue;
         // Deliberately fictional cycles, including declines and flat stretches.
         const cycle = Math.floor(index / 120) % 4;
-        const drifts = [[0.0011, 0.0016], [-0.0009, -0.0014], [0, 0], [0.0014, 0.0007]][cycle];
-        for (let f = 0; f < 2; f++) {
-            const noise = (random() - 0.5) * 0.007;
+        const drifts = cycles[cycle];
+        for (let f = 0; f < ids.length; f++) {
+            const noise = (streams[f]() - 0.5) * 0.007;
             if (index > 0) values[f] *= 1 + drifts[f] + (cycle === 2 ? 0 : noise);
             observations[f].push({ date: date.toISOString().slice(0, 10), value: values[f].toFixed(6) });
         }
         index++;
     }
     if (!index) throw new Error('期間に平日がありません。');
-    const names = ['オルカン（サンプル）', 'S&P500（サンプル）'];
+    const names = ['オルカン（サンプル）', 'S&P500（サンプル）', 'TOPIX（サンプル）'];
     const manifest = {
         schemaVersion: 1, datasetVersion: version, isSample: true,
         publishedAt: `${end}T00:00:00Z`,

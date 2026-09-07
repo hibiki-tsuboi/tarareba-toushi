@@ -60,7 +60,7 @@ import Testing
         #expect(await store.value?.snapshot.manifest.datasetVersion == "sample-v2")
         #expect(repo.origin == .remote)
         #expect(repo.fetchedAt == Date(timeIntervalSince1970: 10_000))
-        #expect(await transport.count == 3)
+        #expect(await transport.count == Fixtures.requests())
     }
 
     @Test(arguments: ["missing", "json", "mode", "version"])
@@ -102,7 +102,7 @@ import Testing
         async let first: Void = repo.refresh(force: true)
         async let second: Void = repo.refresh(force: true)
         _ = await (first, second)
-        #expect(await transport.count == 3)
+        #expect(await transport.count == Fixtures.requests())
     }
 
     @Test func unsafePathStopsBeforeSeriesRequest() async throws {

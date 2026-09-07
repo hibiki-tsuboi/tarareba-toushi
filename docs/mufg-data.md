@@ -16,11 +16,13 @@
 |---|---|---|---|---|
 | eMAXIS Slim 全世界株式（オール・カントリー） | 253425 | 0331418A | JP90C000H1T1 | 2018-10-31 |
 | eMAXIS Slim 米国株式（S&P500） | 253266 | 03311187 | JP90C000GKC6 | 2018-07-03 |
+| ｅＭＡＸＩＳ Ｓｌｉｍ 国内株式（ＴＯＰＩＸ） | 252634 | 03317172 | JP90C000ENA9 | 2017-02-27 |
 
 対象は投資信託の基準価額で、S&P500やMSCI ACWIという株価指数そのものの履歴ではありません。商品の識別情報は公式ページで確認し、取得時も商品名とAPIの3種類のコードを照合します。
 
 - [オルカン公式商品ページ](https://emaxis.am.mufg.jp/fund/253425.html)
 - [S&P500公式商品ページ](https://emaxis.am.mufg.jp/fund/253266.html)
+- [国内株式（TOPIX）公式商品ページ](https://emaxis.am.mufg.jp/fund/252634.html)
 - [投信情報API](https://www.am.mufg.jp/tool/webapi/)・[公式仕様書（2026-06-09改定）](https://www.am.mufg.jp/assets/pdf/tool/webapi/fund_api.pdf)・[利用規約](https://www.am.mufg.jp/tool/webapi/agreement.html)
 
 ## APIによる取得と更新

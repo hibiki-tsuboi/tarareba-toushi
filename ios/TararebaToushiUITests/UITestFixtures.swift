@@ -3,6 +3,9 @@ import XCTest
 
 // Only the UI test runner owns these fictional responses; it supplies them at launch.
 enum UITestFixtures {
+    // One catalog request plus one history per fund in the fixture below.
+    static let requestsPerUpdate = 4
+
     @MainActor static func app(mode: String = "sample", session: UUID = UUID()) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing"]
@@ -14,15 +17,18 @@ enum UITestFixtures {
 
     private static func responses(mode: String) -> String {
         let sample = mode == "sample"
-        let ids = sample ? ["demo-all-country", "demo-sp500"] : ["all-country", "sp500"]
-        let names = sample ? ["オルカン（サンプル）", "S&P500（サンプル）"] : [
+        let ids = sample
+            ? ["demo-all-country", "demo-sp500", "demo-topix"] : ["all-country", "sp500", "topix"]
+        let names = sample ? ["オルカン（サンプル）", "S&P500（サンプル）", "TOPIX（サンプル）"] : [
             "eMAXIS Slim 全世界株式（オール・カントリー）", "eMAXIS Slim 米国株式（S&P500）",
+            "ｅＭＡＸＩＳ Ｓｌｉｍ 国内株式（ＴＯＰＩＸ）",
         ]
         let dates = ["2020-01-06", "2021-09-06", "2023-09-04", "2025-01-06", "2025-08-13", "2026-09-03", "2026-09-04"]
         let values = [["7000", "8000", "9000", "10000", "15000", "11900", "12000"],
-            ["6000", "7000", "8000", "10000", "16000", "13900", "14000"]]
+            ["6000", "7000", "8000", "10000", "16000", "13900", "14000"],
+            ["8000", "9000", "9500", "10000", "12000", "10900", "11000"]]
         let version = "ui-fixture-v1"
-        let contentVersions = ["fund-" + String(repeating: "a", count: 64), "fund-" + String(repeating: "b", count: 64)]
+        let contentVersions = ["a", "b", "c"].map { "fund-" + String(repeating: $0, count: 64) }
         let descriptors: [[String: Any]] = ids.enumerated().map { index, id in
             var descriptor: [String: Any] = ["id": id, "displayName": names[index], "currency": "JPY",
                 "path": sample ? "funds/\(id).\(version).json" : "funds/\(id).json",

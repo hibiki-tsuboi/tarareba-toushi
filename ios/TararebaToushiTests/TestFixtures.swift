@@ -3,15 +3,19 @@ import Foundation
 @testable import TararebaToushi
 
 nonisolated enum Fixtures {
+    // Final values per fund, in delivered order. Extra funds reuse the last value.
     static func snapshot(
-        version: String = "sample-v1", a: String = "12000", b: String = "14000", mode: DatasetMode = .sample
+        version: String = "sample-v1", a: String = "12000", b: String = "14000", c: String = "13000",
+        mode: DatasetMode = .sample
     ) -> DatasetSnapshot {
         let ids = mode.fundIDs
+        let finals = [a, b, c]
+        let names = ["オルカン", "S&P500", "TOPIX"]
         let dates = ["2024-12-30", "2025-01-06", "2026-09-04"]
         let funds = ids.enumerated()
             .map { i, id in
                 FundDescriptor(
-                    id: id, displayName: (i == 0 ? "オルカン" : "S&P500") + (mode == .sample ? "（サンプル）" : ""),
+                    id: id, displayName: names[i] + (mode == .sample ? "（サンプル）" : ""),
                     currency: "JPY", path: "funds/\(id).\(version).json", firstDate: dates[0], lastDate: dates[2])
             }
         let manifest = Manifest(
@@ -25,7 +29,7 @@ nonisolated enum Fixtures {
                     source: DataSourceDescription(
                         kind: mode == .sample ? "synthetic" : "official", name: "テスト専用の架空値",
                         url: mode == .sample ? nil : "https://example.com/fund", note: "実績ではありません"),
-                    observations: zip(dates, ["9900", "10000", i == 0 ? a : b])
+                    observations: zip(dates, ["9900", "10000", finals[i]])
                         .map { FundObservation(date: $0, value: $1) })
             }
         return DatasetSnapshot(manifest: manifest, series: series)
@@ -65,6 +69,9 @@ nonisolated enum Fixtures {
             snapshot: DatasetSnapshot(manifest: manifest, series: validated.map(\.series)),
             funds: validated, latestDate: latest)
     }
+
+    // A full update is the catalog plus one history per delivered fund.
+    static func requests(_ mode: DatasetMode = .sample) -> Int { mode.fundIDs.count + 1 }
 
     static func envelope(_ snapshot: DatasetSnapshot = snapshot(), checkedAt: Date? = nil) -> StoredSnapshot {
         StoredSnapshot(

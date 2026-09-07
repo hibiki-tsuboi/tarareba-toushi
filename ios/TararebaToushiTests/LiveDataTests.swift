@@ -20,13 +20,14 @@ import Testing
         await repo.start(refresh: false)
         #expect(repo.isStale)
         #expect(repo.dataset?.snapshot == legacy)
+        let requestsPerUpdate = Fixtures.requests(.live)
         await repo.refresh()
-        #expect(await transport.count == 3)
+        #expect(await transport.count == requestsPerUpdate)
         #expect(repo.dataset?.snapshot == updated)
         #expect(await store.value?.snapshot == updated)
         #expect(!repo.isStale)
         await repo.refresh()
-        #expect(await transport.count == 3)
+        #expect(await transport.count == requestsPerUpdate)
     }
 
     @Test func failedLegacyNAVUpdatePreservesCacheAndRetriesWithoutWaitingSixHours() async throws {
@@ -40,15 +41,17 @@ import Testing
         let store = MemoryStore(Fixtures.envelope(legacy, checkedAt: now))
         let repo = FundRepository(configuration: AppConfiguration(), transport: transport, store: store, now: { now })
 
+        // Stops at the missing history: the catalog, the funds before it and the failure.
+        let failedAttempt = DatasetMode.live.fundIDs.firstIndex(of: "sp500")! + 2
         await repo.start()
-        #expect(await transport.count == 3)
+        #expect(await transport.count == failedAttempt)
         #expect(repo.dataset?.snapshot == legacy)
         #expect(await store.value?.snapshot == legacy)
         #expect(repo.isStale)
         #expect(repo.message != nil)
         await transport.set(try Fixtures.responses(updated))
         await repo.refresh()
-        #expect(await transport.count == 6)
+        #expect(await transport.count == failedAttempt + Fixtures.requests(.live))
         #expect(repo.dataset?.snapshot == updated)
         #expect(!repo.isStale)
         #expect(repo.message == nil)
@@ -139,7 +142,7 @@ import Testing
         let repo = FundRepository(configuration: AppConfiguration(), transport: transport, store: store)
         #expect(repo.dataset == nil)
         await repo.start()
-        #expect(await transport.count == 3)
+        #expect(await transport.count == Fixtures.requests(.live))
         #expect(repo.dataset?.snapshot == snapshot)
         #expect(await store.value?.snapshot == snapshot)
         #expect(repo.fetchedAt != nil)
@@ -183,7 +186,7 @@ import Testing
         #expect(repo.dataset == nil)
         #expect(repo.checkedAt == nil)
         await repo.refresh()
-        #expect(await transport.count == 3)
+        #expect(await transport.count == Fixtures.requests(.live))
         #expect(await store.value?.origin == .remote)
         #expect(await store.value?.fetchedAt != nil)
     }

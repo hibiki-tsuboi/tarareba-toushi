@@ -78,6 +78,30 @@ final class ComparisonUITests: XCTestCase {
         XCTAssertTrue(app.buttons["fund-sp500"].isSelected)
     }
 
+    @MainActor func testCheckingAThirdFundRanksResultsAndShowsTheWidestGap() {
+        let app = UITestFixtures.app(mode: "live")
+        app.launch()
+        waitForSimulation(app)
+        app.buttons["fund-topix"].tap()
+        XCTAssertTrue(app.buttons["fund-topix"].isSelected)
+        XCTAssertEqual(app.staticTexts["fund-selection-count"].label, "5商品中3商品を選択中")
+        XCTAssertEqual(app.buttons["simulate"].label, "3つを比較する")
+
+        simulate(app)
+        XCTAssertTrue(app.staticTexts["valuation-topix"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["valuation-all-country"].label, "1,200,000円")
+        XCTAssertEqual(app.staticTexts["valuation-sp500"].label, "1,400,000円")
+        XCTAssertEqual(app.staticTexts["valuation-topix"].label, "1,100,000円")
+        // Three funds report the widest gap and a ranking instead of a difference.
+        XCTAssertEqual(app.staticTexts["comparison-difference"].label, "300,000円")
+        XCTAssertEqual(app.staticTexts["comparison-summary"].label, "この期間で最も多かったのはS&P500でした。")
+        let ranks = ["rank-sp500", "rank-all-country", "rank-topix"].map {
+            app.descendants(matching: .any).matching(identifier: $0).firstMatch.frame.minY
+        }
+        XCTAssertEqual(ranks, ranks.sorted(), "the ranking is ordered by valuation")
+        capture(app, name: "three-fund-results")
+    }
+
     @MainActor func testBothFundsUseChangedAmountAndPreserveInput() {
         let app = UITestFixtures.app(mode: "live")
         app.launch()
@@ -139,7 +163,8 @@ final class ComparisonUITests: XCTestCase {
 
     @MainActor func testZeroGainAndUpdateFailurePreservesResults() {
         let app = UITestFixtures.app()
-        app.launchEnvironment["TARAREBA_TEST_FAIL_AFTER"] = "3"
+        // Let the first load finish, then fail the refresh that follows it.
+        app.launchEnvironment["TARAREBA_TEST_FAIL_AFTER"] = String(UITestFixtures.requestsPerUpdate)
         app.launchEnvironment["TARAREBA_TEST_DATE"] = "2026-09-04"
         app.launch()
         simulate(app)

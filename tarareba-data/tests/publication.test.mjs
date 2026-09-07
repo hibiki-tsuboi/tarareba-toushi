@@ -40,12 +40,12 @@ function server(data) {
     } };
 }
 
-test('unchanged published data skips deployment and verifies both histories', async t => {
+test('unchanged published data skips deployment and verifies every history', async t => {
     const data = snapshot();
     const directory = await folder(t, data);
     const remote = server(data);
     assert.equal((await publicationStatus(directory, remote.fetch)).needsDeploy, false);
-    assert.equal(remote.requests.length, 3);
+    assert.equal(remote.requests.length, funds.length + 1, 'the catalog plus one request per history');
     assert.deepEqual(await verifyPublication(directory, remote.fetch), data);
 });
 

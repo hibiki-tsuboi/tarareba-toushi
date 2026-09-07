@@ -1,8 +1,8 @@
 {
   "schemaVersion": 2,
-  "datasetVersion": "mufg-20260904-f6347a72dbeb",
+  "datasetVersion": "mufg-20260904-034bd3e56de6",
   "isSample": false,
-  "publishedAt": "2026-09-07T06:47:35Z",
+  "publishedAt": "2026-09-07T09:02:34Z",
   "funds": [
     {
       "id": "all-country",
@@ -20,6 +20,15 @@
       "path": "funds/sp500.json",
       "contentVersion": "fund-2d015ece91b0d386a3e07625ad1cae8ecfd62ec9b55e83ca7e57bbbc1b1e3b2d",
       "firstDate": "2018-07-03",
+      "lastDate": "2026-09-04"
+    },
+    {
+      "id": "topix",
+      "displayName": "ｅＭＡＸＩＳ Ｓｌｉｍ 国内株式（ＴＯＰＩＸ）",
+      "currency": "JPY",
+      "path": "funds/topix.json",
+      "contentVersion": "fund-a213fd931f64c4a1d0e3d5349cd4d06d126231426cf7dafe23d230e28fe268f5",
+      "firstDate": "2017-02-27",
       "lastDate": "2026-09-04"
     }
   ]

@@ -12,6 +12,12 @@ test('deterministic sample includes gains, losses, plateaus and changing leaders
         assert(deltas.some(d => d > 0) && deltas.some(d => d < 0) && deltas.some(d => d === 0));
     }
     const last = a.series.map(s => Number(s.observations.at(-1).value));
+    // The best fund must depend on the start date, and the compared pair must cross.
+    const winners = new Set(a.series[0].observations.map((_, i) => {
+        const ratios = a.series.map((s, f) => last[f] / Number(s.observations[i].value));
+        return a.series[ratios.indexOf(Math.max(...ratios))].fundId;
+    }));
+    assert.equal(winners.size, a.series.length, '開始日によって勝者が変わりません');
     const differences = a.series[0].observations.map((o, i) => last[1] / Number(a.series[1].observations[i].value) - last[0] / Number(o.value));
     assert(differences.some(d => d > 0) && differences.some(d => d < 0));
 });

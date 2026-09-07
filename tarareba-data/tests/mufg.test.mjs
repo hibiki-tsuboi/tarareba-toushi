@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { funds, latestURL, datedURL, csvURL, csvHeaders, parseFundInformation, parseMufgCSV,
     createSnapshot, writeSnapshot, fetchBytes, updateFromMufg, readSnapshot } from '../scripts/fetch-mufg.mjs';
-import { validate } from '../scripts/contract.mjs';
+import { validate, liveIDs } from '../scripts/contract.mjs';
 
 // Fictional API responses; these tests never contact the provider.
 const histories = () => funds.map(f => ({ observations: [
@@ -152,7 +152,7 @@ test('only an explicitly successful empty dated response means no observation', 
     }
 });
 
-test('unchanged latest NAVs require only two API calls and preserve version, timestamps and history', async t => {
+test('unchanged latest NAVs require one API call per fund and preserve version, timestamps and history', async t => {
     const root = await folder(t);
     const before = await readSnapshot(root);
     const remote = server('2025-01-07', 9900);
@@ -160,7 +160,7 @@ test('unchanged latest NAVs require only two API calls and preserve version, tim
     const next = await updateFromMufg(root, remote.fetch, { ...options, wait: async ms => pauses.push(ms) });
     assert.deepEqual(next, before);
     assert.deepEqual(remote.requests, funds.map(latestURL));
-    assert.deepEqual(pauses, [1000]);
+    assert.deepEqual(pauses, funds.slice(1).map(() => 1000));
 });
 
 test('fills only dates after the saved end, skips successful empty days, and appends the latest NAV', async t => {
@@ -206,7 +206,7 @@ test('missing or incompatible local history fails before any request; initial ba
 
 test('adding a fund imports its history from one CSV and never refetches the saved ones', async t => {
     // Stands in for a product added to the catalogue later.
-    const added = { id: 'topix', code: '000000', associationCode: '0000000A', isin: 'JP90C0000000',
+    const added = { id: 'test-fund', code: '000000', associationCode: '0000000A', isin: 'JP90C0000000',
         name: 'テスト専用の追加商品', start: '2025-01-06' };
     const root = await folder(t);
     funds.push(added);
@@ -214,7 +214,7 @@ test('adding a fund imports its history from one CSV and never refetches the sav
 
     let blocked = 0;
     const refuse = async () => { blocked++; throw new Error('No network allowed'); };
-    await assert.rejects(updateFromMufg(root, refuse, options), /topix/);
+    await assert.rejects(updateFromMufg(root, refuse, options), /test-fund/);
     await assert.rejects(updateFromMufg(root, refuse, options), /--backfill/);
     assert.equal(blocked, 0, 'requests must not start before the missing fund is acknowledged');
 
@@ -238,7 +238,7 @@ test('adding a fund imports its history from one CSV and never refetches the sav
     assert.deepEqual(requests.filter(url => url.includes('/fund_information_date/')),
         [datedURL(added, '2025-01-07')], 'interior dates are sampled even in a short history');
 
-    const imported = snapshot.series.find(s => s.fundId === 'topix');
+    const imported = snapshot.series.find(s => s.fundId === 'test-fund');
     assert.deepEqual(imported.observations, history.map(([date, value]) => ({ date, value })));
     assert.equal(imported.valueBasis, 'nav');
     for (const old of before.series) {
@@ -246,11 +246,11 @@ test('adding a fund imports its history from one CSV and never refetches the sav
         assert.deepEqual(next.observations.slice(0, old.observations.length), old.observations,
             'existing dates and NAVs stay byte-identical when a fund is added');
     }
-    assert.equal(snapshot.manifest.funds.length, 3);
+    assert.equal(snapshot.manifest.funds.length, funds.length);
 });
 
 test('an imported history is sampled against the API and rejected when it disagrees', async t => {
-    const added = { id: 'topix', code: '000000', associationCode: '0000000A', isin: 'JP90C0000000',
+    const added = { id: 'test-fund', code: '000000', associationCode: '0000000A', isin: 'JP90C0000000',
         name: 'テスト専用の追加商品', start: '2025-01-06' };
     const root = await folder(t);
     funds.push(added);
@@ -294,12 +294,12 @@ test('explicit initial backfill imports every fund from its inception CSV', asyn
     };
     const snapshot = await updateFromMufg(root, fetcher, { ...options, backfill: true });
     assert(snapshot.series.every(s => s.observations.at(-1).date === '2018-11-02'));
-    assert.equal(snapshot.series[0].observations[0].date, '2018-10-31');
-    assert.equal(snapshot.series[1].observations[0].date, '2018-07-03');
-    assert.deepEqual(requests, [
-        csvURL(funds[0]), datedURL(funds[0], '2018-11-01'), latestURL(funds[0]),
-        csvURL(funds[1]), datedURL(funds[1], '2018-11-01'), latestURL(funds[1]),
-    ], 'one CSV, the sampled interior dates and one latest-value request per fund');
+    for (const [i, fund] of funds.entries()) {
+        assert.equal(snapshot.series[i].observations[0].date, fund.start);
+    }
+    assert.deepEqual(requests,
+        funds.flatMap(fund => [csvURL(fund), datedURL(fund, '2018-11-01'), latestURL(fund)]),
+        'one CSV, the sampled interior dates and one latest-value request per fund');
 });
 
 test('API rollback, future dates, mismatched dates and failures leave saved files intact', async t => {
@@ -361,7 +361,8 @@ test('writes distribution files only, keeps editions stable and rejects history 
     updated[0].observations[1].value = '11001';
     const next = await writeSnapshot(createSnapshot(updated), root);
     assert.notEqual(first.manifest.datasetVersion, next.manifest.datasetVersion);
-    assert.deepEqual((await readdir(resolve(root, 'public/live/funds'))).sort(), ['all-country.json', 'sp500.json']);
+    assert.deepEqual((await readdir(resolve(root, 'public/live/funds'))).sort(),
+        funds.map(f => `${f.id}.json`).sort());
     const manifest = await readFile(resolve(root, 'public/live/manifest.json'), 'utf8');
     updated[0].observations.splice(1, 1);
     await assert.rejects(writeSnapshot(createSnapshot(updated), root), /観測日が欠け/);
@@ -422,10 +423,15 @@ test('only the changed fund gets new content and the fixed file count stays cons
     assert.equal(next.manifest.funds[1].contentVersion, before.manifest.funds[1].contentVersion);
     assert.deepEqual(next.manifest.funds.map(f => f.path), before.manifest.funds.map(f => f.path));
     assert.equal(await readFile(otherPath, 'utf8'), otherBytes);
-    assert.deepEqual((await readdir(resolve(root, 'public/live/funds'))).sort(), ['all-country.json', 'sp500.json']);
+    assert.deepEqual((await readdir(resolve(root, 'public/live/funds'))).sort(),
+        funds.map(f => `${f.id}.json`).sort());
 });
 
 test('migration from versioned URLs preserves every date and value and subsequent writes stay fixed', async t => {
+    // Format 1 requires exactly the compared funds, so this retired layout is
+    // exercised with the catalogue trimmed back to them.
+    const extra = funds.splice(liveIDs.length);
+    t.after(() => { funds.push(...extra); });
     const root = await folder(t, null);
     const legacy = createSnapshot(histories());
     legacy.manifest.schemaVersion = 1;
@@ -452,7 +458,7 @@ test('migration from versioned URLs preserves every date and value and subsequen
 
 test('a hundred-product catalog can contain additional histories outside the comparison period', () => {
     const snapshot = createSnapshot(histories());
-    for (let index = 2; index < 100; index++) {
+    for (let index = funds.length; index < 100; index++) {
         const series = structuredClone(snapshot.series[0]);
         series.fundId = `additional-${index}`;
         series.observations = [{ date: '2010-01-04', value: '10000' }];

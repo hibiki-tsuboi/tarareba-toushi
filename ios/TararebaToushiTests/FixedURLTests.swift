@@ -36,11 +36,14 @@ nonisolated enum FixedFixtures {
         let repo = repository(transport)
         await repo.start()
         #expect(repo.dataset?.snapshot == snapshot)
-        #expect(await transport.requests.map(\.path) == ["/live/manifest.json", "/live/funds/all-country.json", "/live/funds/sp500.json"])
+        let live = DatasetMode.live.fundIDs
+        #expect(await transport.requests.map(\.path)
+            == ["/live/manifest.json"] + live.map { "/live/funds/\($0).json" })
+        // An unchanged catalog costs one request; nothing is downloaded again.
         await repo.refresh(force: true)
-        #expect(await transport.count == 4)
+        #expect(await transport.count == live.count + 2)
         await repo.refresh()
-        #expect(await transport.count == 4)
+        #expect(await transport.count == live.count + 2)
     }
 
     @Test func correctionOnSameDateDownloadsOnlyChangedFundAndKeepsOtherSeries() async throws {
@@ -58,7 +61,7 @@ nonisolated enum FixedFixtures {
 
     @Test func hundredFundCatalogDownloadsOnlySupportedProducts() async throws {
         var snapshot = try FixedFixtures.snapshot()
-        for index in 2..<100 {
+        for index in DatasetMode.live.fundIDs.count..<100 {
             var fund = snapshot.manifest.funds[0]
             fund.id = "additional-\(index)"
             fund.displayName = "追加商品\(index)"
@@ -68,15 +71,16 @@ nonisolated enum FixedFixtures {
         let transport = MockTransport(try Fixtures.responses(snapshot))
         let repo = repository(transport)
         await repo.start()
+        let live = DatasetMode.live.fundIDs
         #expect(repo.dataset?.snapshot.manifest.funds.count == 100)
-        #expect(repo.dataset?.funds.count == 2)
-        #expect(await transport.count == 3)
+        #expect(repo.dataset?.funds.count == live.count)
+        #expect(await transport.count == live.count + 1)
         let fetchedAt = repo.fetchedAt
         snapshot.manifest.datasetVersion = "catalog-v2"
         snapshot.manifest.funds[99].contentVersion = "fund-" + String(repeating: "f", count: 64)
         await transport.set(try Fixtures.responses(snapshot))
         await repo.refresh(force: true)
-        #expect(await transport.count == 4)
+        #expect(await transport.count == live.count + 2)
         #expect(repo.dataset?.snapshot.manifest == snapshot.manifest)
         #expect(repo.fetchedAt == fetchedAt)
     }
