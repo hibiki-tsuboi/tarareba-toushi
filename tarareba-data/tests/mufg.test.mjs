@@ -3,66 +3,213 @@ import assert from 'node:assert/strict';
 import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
-import { funds, headers, parseCSV, parseMufgCSV, validateLatest, createSnapshot, writeSnapshot, fetchBytes,
-    updateFromMufg } from '../scripts/fetch-mufg.mjs';
+import { funds, latestURL, datedURL, parseFundInformation, createSnapshot, writeSnapshot, fetchBytes,
+    updateFromMufg, readSnapshot } from '../scripts/fetch-mufg.mjs';
+import { migratedSnapshot, verifiedVersion } from '../scripts/migrate-nav.mjs';
 import { validate } from '../scripts/contract.mjs';
 
-// Deliberately fictional fixtures. They exercise nonzero distributions independently of today's funds.
-const csv = fund => `${fund.name}\r\n${headers.join(',')}\r\n` +
-    `${fund.start.replaceAll('-', '/')},10000,10000,,1.00\r\n` +
-    '2025/01/06,9000,11000,2000,1.10\r\n2025/01/07,9900,12100,,1.20\r\n';
-const histories = () => funds.map(f => parseMufgCSV(csv(f), f));
-const latest = fund => ({ result: { status: 200 }, errors: { count: 0 }, datasets: [{
-    fund_cd: fund.code, association_fund_cd: fund.associationCode, isin_cd: fund.isin,
-    fund_name: fund.name, base_date: '20250107', nav: 9900
-}] });
+// Fictional API responses; these tests never contact the provider.
+const histories = () => funds.map(f => ({ observations: [
+    { date: f.start, value: '10000' }, { date: '2025-01-06', value: '9000' },
+    { date: '2025-01-07', value: '9900' }
+] }));
+const payload = (fund, date = '2025-01-07', nav = 9900) => ({
+    result: { status: 200, retcount: 1, errcd: null }, errors: { count: 0 }, datasets: [{
+        fund_cd: fund.code, association_fund_cd: fund.associationCode, isin_cd: fund.isin,
+        fund_name: fund.name, base_date: date.replaceAll('-', ''), nav
+    }]
+});
+const empty = () => ({ result: { status: 200, retcount: 0, errcd: null }, errors: { count: 0 }, datasets: [] });
+const options = { wait: async () => {}, today: '2026-09-07' };
+const response = value => new Response(JSON.stringify(value), { headers: { 'content-type': 'application/json' } });
 
-test('imports the official reinvested column without adding distributions again', () => {
-    const history = histories()[0];
-    assert.equal(history.observations[1].value, '11000');
-    assert.equal(history.observations[2].value, '12100');
-    assert.equal(history.navs.get('2025-01-06'), '9000');
-    validateLatest(latest(funds[0]), history, funds[0]);
-    const snapshot = createSnapshot(histories(), '2026-09-06T00:00:00Z');
-    assert.equal(snapshot.manifest.isSample, false);
-    assert.equal(snapshot.series[0].valueBasis, 'reinvestedIndex');
-    assert.equal(snapshot.series[0].observations[2].value, '12100');
+async function folder(t, snapshot = createSnapshot(histories())) {
+    const root = await mkdtemp(resolve(tmpdir(), 'tarareba-nav-'));
+    t.after(() => rm(root, { recursive: true, force: true }));
+    if (snapshot) await writeSnapshot(snapshot, root);
+    return root;
+}
+function server(latestDate, value = 10100, dates = new Map()) {
+    const requests = [];
+    return { requests, fetch: async url => {
+        requests.push(url);
+        const fund = funds.find(f => url.includes(f.associationCode));
+        assert(fund, 'Unexpected fund');
+        if (url === latestURL(fund)) return response(payload(fund, latestDate, value));
+        const date = url.match(/base_date\/(\d{4})(\d{2})(\d{2})$/)?.slice(1).join('-');
+        assert(date && dates.has(date), `Unexpected historical request: ${url}`);
+        const nav = dates.get(date);
+        return response(nav === null ? empty() : payload(fund, date, nav));
+    } };
+}
+
+test('uses only the requested date and ordinary NAV, ignoring other API fields', () => {
+    const data = payload(funds[0]);
+    data.datasets[0].netassets = 999999;
+    data.datasets[0].percentage_change_full = '999';
+    assert.deepEqual(parseFundInformation(data, funds[0], '2025-01-07'), { date: '2025-01-07', value: '9900' });
+    const history = histories();
+    history[0].observations[1].distribution = '1000';
+    history[0].observations[1].reinvestedValue = '11000';
+    const snapshot = createSnapshot(history, '2026-09-06T00:00:00Z');
+    assert.equal(snapshot.series[0].valueBasis, 'nav');
+    assert.deepEqual(Object.keys(snapshot.series[0].observations[1]), ['date', 'value']);
+    assert.equal(snapshot.series[0].observations[1].value, '9000');
     assert.throws(() => validate(snapshot, 'sample'));
 });
 
-test('parses quoted CSV and rejects malformed quoting', () => {
-    assert.deepEqual(parseCSV('"a,b","c""d"\r\n"line\nbreak",e'), [['a,b', 'c"d'], ['line\nbreak', 'e']]);
-    for (const value of ['"unclosed', 'a"b,c', '"a"b,c']) assert.throws(() => parseCSV(value));
-    const quoted = csv(funds[0]).split('\r\n').map(line => line ? line.split(',').map(c => `"${c}"`).join(',') : '').join('\r\n');
-    assert.deepEqual(parseMufgCSV(quoted, funds[0]), histories()[0]);
-});
-
-test('rejects wrong funds, missing columns, invalid values, dates and truncated history', () => {
-    const original = csv(funds[0]);
-    const bad = [
-        original.replace(funds[0].name, funds[1].name),
-        original.replace(headers[2], '基準価額'),
-        original.replace('9000,11000', '9000,'),
-        original.replace('9000,11000', '9000,0'),
-        original.replace('9000,11000', '9000,1e4'),
-        original.replace('9000,11000', 'NaN,11000'),
-        original.replace('2025/01/06', '2025/02/30'),
-        original.replace('2025/01/07', '2025/01/06'),
-        original.replace('2018/10/31,10000,10000,,1.00\r\n', ''),
-        original.replace('9000,11000,2000,1.10', '9000,11000,2000')
+test('rejects wrong products, days, NAVs and malformed/error API envelopes', () => {
+    const mutations = [
+        p => p.result.status = 500, p => p.result.errcd = 'unavailable', p => p.result.retcount = 0,
+        p => p.errors.count = 1, p => delete p.errors, p => p.datasets = [],
+        p => p.datasets.push(p.datasets[0]), p => p.datasets[0].fund_cd = 'wrong',
+        p => p.datasets[0].association_fund_cd = 'wrong', p => p.datasets[0].isin_cd = 'wrong',
+        p => p.datasets[0].fund_name = 'another fund', p => p.datasets[0].base_date = '20250108',
+        p => p.datasets[0].base_date = '20250230', p => p.datasets[0].base_date = '20180101',
+        ...[0, -1, null, '9900', '1e4', {}, Infinity].map(value => p => p.datasets[0].nav = value)
     ];
-    for (const text of bad) assert.throws(() => parseMufgCSV(text, funds[0]));
+    for (const mutate of mutations) {
+        const data = payload(funds[0]); mutate(data);
+        assert.throws(() => parseFundInformation(data, funds[0], '2025-01-07'));
+    }
+    assert.throws(() => datedURL(funds[0], '2025-02-30'));
 });
 
-test('API identity, NAV and date must agree with the CSV', () => {
-    for (const change of [
-        p => p.result.status = 500, p => p.errors.count = 1, p => p.datasets = [],
-        p => p.datasets[0].fund_cd = 'wrong', p => p.datasets[0].isin_cd = 'wrong',
-        p => p.datasets[0].base_date = '20250108', p => p.datasets[0].nav = 9901
-    ]) {
-        const payload = latest(funds[0]); change(payload);
-        assert.throws(() => validateLatest(payload, histories()[0], funds[0]));
+test('only an explicitly successful empty dated response means no observation', () => {
+    assert.equal(parseFundInformation(empty(), funds[0], '2025-01-11'), null);
+    assert.throws(() => parseFundInformation(empty(), funds[0]));
+    for (const mutate of [p => p.result.status = 404, p => p.result.errcd = 'not-found',
+        p => p.errors.count = 1, p => p.result.retcount = 1, p => delete p.datasets]) {
+        const data = empty(); mutate(data);
+        assert.throws(() => parseFundInformation(data, funds[0], '2025-01-11'));
     }
+});
+
+test('unchanged latest NAVs require only two API calls and preserve version, timestamps and history', async t => {
+    const root = await folder(t);
+    const before = await readSnapshot(root);
+    const remote = server('2025-01-07', 9900);
+    const pauses = [];
+    const next = await updateFromMufg(root, remote.fetch, { ...options, wait: async ms => pauses.push(ms) });
+    assert.deepEqual(next, before);
+    assert.deepEqual(remote.requests, funds.map(latestURL));
+    assert.deepEqual(pauses, [1000]);
+});
+
+test('fills only dates after the saved end, skips successful empty days, and appends the latest NAV', async t => {
+    const root = await folder(t);
+    const remote = server('2025-01-13', 10300, new Map([
+        ['2025-01-08', 10000], ['2025-01-09', 10100], ['2025-01-10', 10200],
+        ['2025-01-11', null], ['2025-01-12', null]
+    ]));
+    const next = await updateFromMufg(root, remote.fetch, options);
+    for (const [i, fund] of funds.entries()) {
+        assert.deepEqual(next.series[i].observations.slice(0, 3), histories()[i].observations);
+        assert.deepEqual(next.series[i].observations.slice(3), [
+            { date: '2025-01-08', value: '10000' }, { date: '2025-01-09', value: '10100' },
+            { date: '2025-01-10', value: '10200' }, { date: '2025-01-13', value: '10300' }
+        ]);
+        assert.deepEqual(remote.requests.filter(url => url.includes(fund.associationCode)), [
+            latestURL(fund), ...['2025-01-08', '2025-01-09', '2025-01-10', '2025-01-11', '2025-01-12'].map(date => datedURL(fund, date))
+        ]);
+    }
+    assert(remote.requests.every(url => new URL(url).host === 'developer.am.mufg.jp'));
+});
+
+test('a one-day update uses the latest API response without requesting saved history', async t => {
+    const root = await folder(t);
+    const remote = server('2025-01-08');
+    const next = await updateFromMufg(root, remote.fetch, options);
+    assert.deepEqual(remote.requests, funds.map(latestURL));
+    assert.equal(next.series[0].observations.at(-1).date, '2025-01-08');
+});
+
+test('missing or incompatible local history fails before any request; initial backfill is explicit', async t => {
+    const root = await folder(t, null);
+    let requests = 0;
+    const fetcher = async () => { requests++; throw new Error('No network allowed'); };
+    await assert.rejects(updateFromMufg(root, fetcher, options), /--backfill/);
+    assert.equal(requests, 0);
+    const old = createSnapshot(histories());
+    old.series.forEach(s => s.valueBasis = 'reinvestedIndex');
+    await writeSnapshot(old, root);
+    await assert.rejects(updateFromMufg(root, fetcher, options), /移行/);
+    assert.equal(requests, 0);
+});
+
+test('explicit initial backfill requests each date from fund inception', async t => {
+    const root = await folder(t, null);
+    const requests = [];
+    const fetcher = async url => {
+        requests.push(url);
+        const fund = funds.find(f => url.includes(f.associationCode));
+        const end = '2018-11-02';
+        if (url === latestURL(fund)) return response(payload(fund, end, 10200));
+        const date = url.match(/base_date\/(\d{4})(\d{2})(\d{2})$/).slice(1).join('-');
+        return response(payload(fund, date, date === fund.start ? 10000 : 10100));
+    };
+    const snapshot = await updateFromMufg(root, fetcher, { ...options, backfill: true });
+    assert(snapshot.series.every(s => s.observations.at(-1).date === '2018-11-02'));
+    assert.equal(snapshot.series[0].observations[0].date, '2018-10-31');
+    assert.equal(snapshot.series[1].observations[0].date, '2018-07-03');
+    assert.equal(snapshot.series[0].observations.length, 3);
+    assert.equal(snapshot.series[1].observations.length, 123);
+    assert.equal(requests.length, 126);
+    assert.deepEqual(requests.slice(0, 6), [latestURL(funds[0]), datedURL(funds[0], '2018-10-31'),
+        datedURL(funds[0], '2018-11-01'), latestURL(funds[1]), datedURL(funds[1], '2018-07-03'),
+        datedURL(funds[1], '2018-07-04')]);
+    assert.equal(requests.at(-1), datedURL(funds[1], '2018-11-01'));
+    assert.deepEqual(await readSnapshot(root), snapshot);
+});
+
+test('API rollback, future dates, mismatched dates and failures leave saved files intact', async t => {
+    const root = await folder(t);
+    const before = await readSnapshot(root);
+    const files = await readdir(resolve(root, 'public/live/funds'));
+    for (const fetcher of [server('2025-01-06').fetch, server('2027-01-01').fetch,
+        async url => {
+            const fund = funds.find(f => url.includes(f.associationCode));
+            if (url === latestURL(fund)) return response(payload(fund, '2025-01-10'));
+            return response(payload(fund, '2025-01-07'));
+        },
+        async url => {
+            const fund = funds.find(f => url.includes(f.associationCode));
+            if (url === latestURL(fund)) return response(payload(fund, '2025-01-10'));
+            return new Response('{}', { status: 404 });
+        },
+        async url => {
+            if (url === latestURL(funds[0])) return response(payload(funds[0], '2025-01-08'));
+            throw new Error('second fund failed');
+        }
+    ]) {
+        await assert.rejects(updateFromMufg(root, fetcher, options));
+        assert.deepEqual(await readSnapshot(root), before);
+        assert.deepEqual(await readdir(resolve(root, 'public/live/funds')), files);
+    }
+});
+
+test('a corrected latest NAV creates a new edition without changing older observations', async t => {
+    const root = await folder(t);
+    const before = await readSnapshot(root);
+    const next = await updateFromMufg(root, server('2025-01-07', 9800).fetch, options);
+    assert.notEqual(next.manifest.datasetVersion, before.manifest.datasetVersion);
+    assert.equal(next.series[0].observations.at(-1).value, '9800');
+    assert.deepEqual(next.series[0].observations.slice(0, -1), before.series[0].observations.slice(0, -1));
+});
+
+test('offline migration preserves every audited historical date and value and rejects unverified data', async () => {
+    const root = resolve(import.meta.dirname, '../public/live');
+    const series = await Promise.all(funds.map(f => readFile(resolve(root, `funds/${f.id}.${verifiedVersion}.json`), 'utf8').then(JSON.parse)));
+    const old = { manifest: { datasetVersion: verifiedVersion }, series };
+    const migrated = migratedSnapshot(old);
+    assert(migrated.series.every(s => s.valueBasis === 'nav'));
+    assert.deepEqual(migrated.series.map(s => s.observations), series.map(s => s.observations));
+    assert.strictEqual(migratedSnapshot(migrated), migrated);
+    const bad = structuredClone(old);
+    bad.series[0].observations[0].value = '9999';
+    assert.throws(() => migratedSnapshot(bad), /一致しません/);
+    bad.manifest.datasetVersion = 'unverified';
+    assert.throws(() => migratedSnapshot(bad), /未確認/);
 });
 
 test('live datasets require official sources, HTTPS attribution and separate identities', () => {

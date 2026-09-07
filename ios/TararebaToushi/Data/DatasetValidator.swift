@@ -1,4 +1,5 @@
 import Foundation
+import CryptoKit
 
 nonisolated enum DatasetValidator {
     static func validateManifest(_ manifest: Manifest, mode: DatasetMode) throws {
@@ -55,7 +56,7 @@ nonisolated enum DatasetValidator {
                 series.schemaVersion == snapshot.manifest.schemaVersion,
                 series.datasetVersion == snapshot.manifest.datasetVersion,
                 series.isSample == snapshot.manifest.isSample, series.currency == descriptor.currency,
-                ["reinvestedIndex", "navWithoutDistributions"].contains(series.valueBasis),
+                supportsValueBasis(series, mode: mode),
                 !series.source.name.isEmpty, !series.source.note.isEmpty,
                 series.source.kind == (mode == .sample ? "synthetic" : "official"),
                 !series.observations.isEmpty, series.observations.count <= 30_000,
@@ -82,7 +83,14 @@ nonisolated enum DatasetValidator {
             let dates = Set(values.keys)
             common = common.map { $0.intersection(dates) } ?? dates
             firstDates.append(try TradingDay(descriptor.firstDate))
-            funds.append(ValidatedFund(descriptor: descriptor, series: series, values: values))
+            var displaySeries = series
+            if mode == .live, series.valueBasis == "reinvestedIndex" {
+                // This exact legacy edition was verified to contain ordinary NAVs.
+                // Keep the original snapshot intact for cache and version comparisons.
+                displaySeries.valueBasis = "nav"
+                displaySeries.source.note = "通常の基準価額（1万口あたり・信託報酬控除後）を使用。分配金の受取額・再投資は含みません。"
+            }
+            funds.append(ValidatedFund(descriptor: descriptor, series: displaySeries, values: values))
         }
         let dates = (common ?? []).sorted()
         guard let end = dates.last, let earliest = firstDates.max() else {
@@ -91,5 +99,21 @@ nonisolated enum DatasetValidator {
         return ValidatedDataset(
             snapshot: snapshot, funds: funds, commonDates: dates,
             earliestRequestedDate: earliest, endDate: end)
+    }
+
+    private static func supportsValueBasis(_ series: FundSeries, mode: DatasetMode) -> Bool {
+        if ["nav", "navWithoutDistributions"].contains(series.valueBasis) { return true }
+        guard series.valueBasis == "reinvestedIndex" else { return false }
+        if mode == .sample { return true }
+        // Allow only the published/cached edition audited on 2026-09-07. Other
+        // reinvested series cannot be used as ordinary NAVs, even with this version label.
+        guard series.datasetVersion == "mufg-20260904-6c4cf880560d" else { return false }
+        let hashes = [
+            "all-country": "20277ded02e488fb01ad2aa873e46a8eca1d53764d6f69e371237e243ef91118",
+            "sp500": "a051e6051d70650bf3988b034beb322ddba4b0a199621b809d6e5e5b5c9d6f3b",
+        ]
+        let text = series.observations.map { "\($0.date):\($0.value)\n" }.joined()
+        let hash = SHA256.hash(data: Data(text.utf8)).map { String(format: "%02x", $0) }.joined()
+        return hash == hashes[series.fundId]
     }
 }

@@ -7,7 +7,7 @@ GitHub Actionsの [Update fund data](../.github/workflows/update-fund-data.yml) 
 ## 更新の流れ
 
 1. デフォルトブランチの最新コードと過去の配信JSONを取得し、Node.js 24で `npm ci`、`npm test` を実行します。
-2. `npm run fetch:mufg` で公式CSV2件とAPI2件を取得・照合します。失敗した場合は60秒間隔で最大3回試し、正常なデータを `npm run validate` で検証します。
+2. `npm run fetch:mufg` で2商品の最新値APIを確認し、保存済み最終日の翌日から不足する日付をAPIで順に取得します。CSVは使用せず、既存の過去日は再取得しません。失敗した場合は60秒間隔で最大3回試し、正常なデータを `npm run validate` で検証します。
 3. `npm run publish:status` で公開中のmanifest・2履歴と比較します。同じ版なら内容まで一致することを確認し、公開を省略します。
 4. 更新した `public/live/` をGitにコミット・pushしてから、必要な場合だけ `npm run deploy` を実行します。
 5. `npm run publish:verify` で公開されたmanifest・2履歴の内容とJSONの形式を確認します。反映待ちを考慮し、15秒間隔で最大5回確認します。

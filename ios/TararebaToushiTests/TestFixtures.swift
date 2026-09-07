@@ -21,7 +21,7 @@ nonisolated enum Fixtures {
             .map { i, id in
                 FundSeries(
                     schemaVersion: 1, datasetVersion: version, isSample: mode == .sample, fundId: id, currency: "JPY",
-                    valueBasis: "reinvestedIndex",
+                    valueBasis: mode == .sample ? "reinvestedIndex" : "nav",
                     source: DataSourceDescription(
                         kind: mode == .sample ? "synthetic" : "official", name: "テスト専用の架空値",
                         url: mode == .sample ? nil : "https://example.com/fund", note: "実績ではありません"),

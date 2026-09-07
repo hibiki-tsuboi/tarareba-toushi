@@ -19,12 +19,18 @@ struct SimulationResultView: View {
                         .foregroundStyle(.secondary)
                 }
                 FundResultCardView(result: fund, index: result.input.fund == .sp500 ? 1 : 0)
-                Text(result.isSample
-                    ? "サンプルデータによる概算です。実際の運用実績ではありません。"
-                    : "過去のデータによる概算です。税金・購入手数料等は含みません。")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 6) {
+                    if !result.isSample {
+                        Text("三菱UFJアセットマネジメント公表データをもとに、たられば投資が独自に算出しています。")
+                        Text("算出基準日：\(result.endDate.label)")
+                    }
+                    Text(result.isSample
+                        ? "サンプルデータによる概算です。実際の運用実績ではありません。"
+                        : "通常の基準価額による概算です。分配金の受取額・再投資、税金・購入手数料等は含みません。")
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
                 Button {
                     dismiss()
                 } label: {

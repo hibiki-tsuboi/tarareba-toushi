@@ -4,6 +4,25 @@ import Testing
 @testable import TararebaToushi
 
 @MainActor struct LiveDataTests {
+    @Test func ordinaryNAVCalculatesHoldingsWithoutAddingCashDistributions() throws {
+        let snapshot = Fixtures.snapshot(a: "9000", mode: .live)
+        let dataset = try DatasetValidator.validate(snapshot, mode: .live)
+        let result = try SimulationCalculator.calculate(
+            .init(amount: 1_000_000, requestedDate: "2025-01-06"), dataset: dataset)
+        // A drop in NAV is a drop in holdings value. No assumed distribution is added.
+        #expect(result.funds[0].displayedValuation == 900_000)
+        #expect(result.funds[0].displayedProfit == -100_000)
+        #expect(result.funds[0].returnPercent == -10)
+    }
+
+    @Test func unverifiedReinvestedDataCannotBeTreatedAsOrdinaryNAV() {
+        for version in ["live-reinvested", "mufg-20260904-6c4cf880560d"] {
+            var snapshot = Fixtures.snapshot(version: version, mode: .live)
+            snapshot.series[0].valueBasis = "reinvestedIndex"
+            #expect(throws: DataIssue.self) { try DatasetValidator.validate(snapshot, mode: .live) }
+        }
+    }
+
     @Test func defaultUsesLiveAndCacheIdentityIsSeparate() {
         let live = AppConfiguration()
         let sample = AppConfiguration(mode: .sample)

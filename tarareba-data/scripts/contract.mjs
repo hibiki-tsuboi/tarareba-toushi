@@ -47,7 +47,7 @@ export function validate(snapshot, mode = 'sample') {
         assert.equal(s.isSample, isSample);
         assert.equal(s.datasetVersion, m.datasetVersion);
         assert.equal(s.currency, 'JPY');
-        assert(['reinvestedIndex', 'navWithoutDistributions'].includes(s.valueBasis));
+        assert(['nav', 'reinvestedIndex', 'navWithoutDistributions'].includes(s.valueBasis));
         assert.equal(s.source.kind, isSample ? 'synthetic' : 'official');
         assert(s.source.name && s.source.note);
         if (!isSample) {

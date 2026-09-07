@@ -21,7 +21,7 @@ struct DataNoticeView: View {
         Label {
             VStack(alignment: .leading, spacing: 3) {
                 Text(mode == .sample ? "サンプルデータ" : "投資信託の実データ").fontWeight(.semibold)
-                Text(mode == .sample ? "実際の運用実績ではありません" : "出典：三菱UFJアセットマネジメント")
+                Text(mode == .sample ? "実際の運用実績ではありません" : "出所：三菱UFJアセットマネジメント")
             }
         } icon: {
             Image(systemName: mode == .sample ? "sparkles.rectangle.stack" : "chart.xyaxis.line")

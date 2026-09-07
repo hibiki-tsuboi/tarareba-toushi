@@ -33,7 +33,7 @@ enum UITestFixtures {
             let source: [String: Any] = ["kind": sample ? "synthetic" : "official", "name": "自動テスト用の架空値",
                 "url": "https://example.com/fund", "note": "UIテスト用の固定値です。実際の運用実績ではありません。"]
             let series: [String: Any] = ["schemaVersion": 1, "datasetVersion": version, "isSample": sample,
-                "fundId": id, "currency": "JPY", "valueBasis": "reinvestedIndex", "source": source,
+                "fundId": id, "currency": "JPY", "valueBasis": sample ? "reinvestedIndex" : "nav", "source": source,
                 "observations": zip(dates, values[index]).map { ["date": $0.0, "value": $0.1] }]
             result["/\(mode)/funds/\(id).\(version).json"] = json(series)
         }
