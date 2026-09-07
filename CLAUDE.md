@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-「たられば投資」＝複数の投資信託に同額を一括投資していた場合を比較するiOSアプリと、その価格データを配信するCloudflare Workersの2つで構成されたリポジトリです。現在の配信商品はオルカン・S&P500・TOPIXの3本で、同時比較は5商品まで・既定は先頭2商品です。ドキュメント・コミットメッセージ・UI文言・エラーメッセージはすべて日本語で書きます。
+「たられば投資」＝複数の投資信託に同額を一括投資していた場合を比較するiOSアプリと、その価格データを配信するCloudflare Workersの2つで構成されたリポジトリです。現在の配信商品はオルカン・S&P500・TOPIX・NASDAQ100の4本で、同時比較は5商品まで・既定は先頭2商品です。ドキュメント・コミットメッセージ・UI文言・エラーメッセージはすべて日本語で書きます。
 
 ## 構成
 

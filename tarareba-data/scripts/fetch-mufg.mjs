@@ -11,7 +11,9 @@ export const funds = [
     { id: 'sp500', code: '253266', associationCode: '03311187', isin: 'JP90C000GKC6',
         name: 'eMAXIS Slim 米国株式（S&P500）', start: '2018-07-03' },
     { id: 'topix', code: '252634', associationCode: '03317172', isin: 'JP90C000ENA9',
-        name: 'ｅＭＡＸＩＳ Ｓｌｉｍ 国内株式（ＴＯＰＩＸ）', start: '2017-02-27' }
+        name: 'ｅＭＡＸＩＳ Ｓｌｉｍ 国内株式（ＴＯＰＩＸ）', start: '2017-02-27' },
+    { id: 'nasdaq100', code: '254062', associationCode: '0331A211', isin: 'JP90C000L9D2',
+        name: 'ｅＭＡＸＩＳ ＮＡＳＤＡＱ１００インデックス', start: '2021-01-29' }
 ];
 export const latestURL = fund => `https://developer.am.mufg.jp/fund_information_latest/association_fund_cd/${fund.associationCode}`;
 export const datedURL = (fund, date) => {

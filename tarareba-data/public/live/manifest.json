@@ -1,8 +1,8 @@
 {
   "schemaVersion": 2,
-  "datasetVersion": "mufg-20260904-034bd3e56de6",
+  "datasetVersion": "mufg-20260904-1bb8ad5deb2e",
   "isSample": false,
-  "publishedAt": "2026-09-07T09:02:34Z",
+  "publishedAt": "2026-09-07T09:47:09Z",
   "funds": [
     {
       "id": "all-country",
@@ -29,6 +29,15 @@
       "path": "funds/topix.json",
       "contentVersion": "fund-a213fd931f64c4a1d0e3d5349cd4d06d126231426cf7dafe23d230e28fe268f5",
       "firstDate": "2017-02-27",
+      "lastDate": "2026-09-04"
+    },
+    {
+      "id": "nasdaq100",
+      "displayName": "ｅＭＡＸＩＳ ＮＡＳＤＡＱ１００インデックス",
+      "currency": "JPY",
+      "path": "funds/nasdaq100.json",
+      "contentVersion": "fund-8d7efcb1d4799b7288648c6e61fb07c0e8105633d4c873aa98c085a023440753",
+      "firstDate": "2021-01-29",
       "lastDate": "2026-09-04"
     }
   ]

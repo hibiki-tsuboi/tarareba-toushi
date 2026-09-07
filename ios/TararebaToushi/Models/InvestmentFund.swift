@@ -4,6 +4,7 @@ nonisolated enum InvestmentFund: String, CaseIterable, Codable, Identifiable, Se
     case allCountry = "all-country"
     case sp500 = "sp500"
     case topix = "topix"
+    case nasdaq100 = "nasdaq100"
 
     var id: String { rawValue }
 
@@ -12,6 +13,7 @@ nonisolated enum InvestmentFund: String, CaseIterable, Codable, Identifiable, Se
         case .allCountry: "オルカン"
         case .sp500: "S&P500"
         case .topix: "TOPIX"
+        case .nasdaq100: "NASDAQ100"
         }
     }
 

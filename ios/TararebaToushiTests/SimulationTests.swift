@@ -15,8 +15,8 @@ struct SimulationTests {
         let result = try SimulationCalculator.calculate(input, dataset: dataset)
         // Neither the catalog order nor the request order changes the displayed order.
         #expect(result.funds.map(\.id) == mode.fundIDs)
-        #expect(result.funds.map(\.displayedValuation) == [1_200_000, 1_400_000, 1_300_000])
-        #expect(result.funds.map(\.displayedProfit) == [200_000, 400_000, 300_000])
+        #expect(result.funds.map(\.displayedValuation) == [1_200_000, 1_400_000, 1_300_000, 1_600_000])
+        #expect(result.funds.map(\.displayedProfit) == [200_000, 400_000, 300_000, 600_000])
         #expect(result.funds.allSatisfy { $0.points.first?.amount == 1_000_000 })
         #expect(result.funds[0].points.map(\.day) == result.funds[1].points.map(\.day))
         #expect(result.startDate.rawValue == "2025-01-06")

@@ -26,16 +26,27 @@ const response = value => new Response(JSON.stringify(value), { headers: { 'cont
 // The provider serves Shift_JIS; only the characters used by these fixtures are mapped.
 const sjis = {
     'の': [130, 204],
+    'ア': [131, 65],
+    'イ': [131, 67],
     'オ': [131, 73],
     'カ': [131, 74],
+    'ク': [131, 78],
+    'ジ': [131, 87],
     'ス': [131, 88],
+    'セ': [131, 90],
+    'ッ': [131, 98],
     'テ': [131, 101],
+    'デ': [131, 102],
     'ト': [131, 103],
+    'ネ': [131, 108],
+    'マ': [131, 125],
+    'メ': [131, 129],
     'リ': [131, 138],
     'ル': [131, 139],
     'ン': [131, 147],
     '・': [129, 69],
     'ー': [129, 91],
+    '三': [142, 79],
     '世': [144, 162],
     '価': [137, 191],
     '億': [137, 173],
@@ -64,6 +75,7 @@ const sjis = {
     '米': [149, 196],
     '純': [143, 131],
     '総': [145, 141],
+    '菱': [149, 72],
     '資': [142, 145],
     '追': [146, 199],
     '配': [148, 122],
@@ -71,18 +83,23 @@ const sjis = {
     '額': [138, 122],
     '（': [129, 105],
     '）': [129, 106],
+    '０': [130, 79],
+    '１': [130, 80],
     'Ａ': [130, 96],
+    'Ｄ': [130, 99],
     'Ｉ': [130, 104],
     'Ｍ': [130, 108],
+    'Ｎ': [130, 109],
     'Ｏ': [130, 110],
     'Ｐ': [130, 111],
+    'Ｑ': [130, 112],
     'Ｓ': [130, 114],
     'Ｔ': [130, 115],
     'Ｘ': [130, 119],
     'ｅ': [130, 133],
     'ｉ': [130, 137],
     'ｌ': [130, 140],
-    'ｍ': [130, 141]
+    'ｍ': [130, 141],
 };
 const encodeSJIS = text => Uint8Array.from([...text].flatMap(c => sjis[c] ?? [c.codePointAt(0)]));
 const csv = (fund, rows) => new Response(
@@ -282,23 +299,25 @@ test('an imported history is sampled against the API and rejected when it disagr
 
 test('explicit initial backfill imports every fund from its inception CSV', async t => {
     const root = await folder(t, null);
-    const rows = fund => [[fund.start, '10000'], ['2018-11-01', '10100'], ['2018-11-02', '10200']];
+    // Dates are relative to each fund's inception so any catalogue stays ascending.
+    const end = '2026-09-04';
+    const rows = fund => [[fund.start, '10000'], [nextDays(fund.start, 1), '10100'], [end, '10200']];
     const requests = [];
     const fetcher = async url => {
         requests.push(url);
         const fund = funds.find(f => url.includes(f.code) || url.includes(f.associationCode));
         if (url === csvURL(fund)) return csv(fund, rows(fund));
-        if (url === latestURL(fund)) return response(payload(fund, '2018-11-02', 10200));
+        if (url === latestURL(fund)) return response(payload(fund, end, 10200));
         const date = url.match(/base_date\/(\d{4})(\d{2})(\d{2})$/).slice(1).join('-');
         return response(payload(fund, date, Number(rows(fund).find(([d]) => d === date)[1])));
     };
     const snapshot = await updateFromMufg(root, fetcher, { ...options, backfill: true });
-    assert(snapshot.series.every(s => s.observations.at(-1).date === '2018-11-02'));
+    assert(snapshot.series.every(s => s.observations.at(-1).date === end));
     for (const [i, fund] of funds.entries()) {
         assert.equal(snapshot.series[i].observations[0].date, fund.start);
     }
     assert.deepEqual(requests,
-        funds.flatMap(fund => [csvURL(fund), datedURL(fund, '2018-11-01'), latestURL(fund)]),
+        funds.flatMap(fund => [csvURL(fund), datedURL(fund, nextDays(fund.start, 1)), latestURL(fund)]),
         'one CSV, the sampled interior dates and one latest-value request per fund');
 });
 

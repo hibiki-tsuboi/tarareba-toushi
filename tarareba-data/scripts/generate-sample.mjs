@@ -6,13 +6,13 @@ import { day, ids, validate } from './contract.mjs';
 // One drift per fund per cycle. A leader that changes between cycles keeps the
 // sample useful for checking rankings, not just a single winner.
 const cycles = [
-    [0.0016, 0.0011, 0.0006],
-    [-0.0014, -0.0009, -0.0004],
-    [0, 0, 0],
-    [0.0018, 0.0014, 0.0007],
+    [0.0016, 0.0011, 0.0006, 0.0021],
+    [-0.0014, -0.0009, -0.0004, -0.0019],
+    [0, 0, 0, 0],
+    [0.0018, 0.0014, 0.0007, 0.0022],
 ];
 
-export function generate({ start = '2020-01-06', end = '2026-09-04', seed = 42, version = 'sample-v2' } = {}) {
+export function generate({ start = '2020-01-06', end = '2026-09-04', seed = 42, version = 'sample-v3' } = {}) {
     if (cycles.some(row => row.length !== ids.length)) {
         throw new Error('商品数と架空データのドリフト定義が一致しません。');
     }
@@ -41,7 +41,9 @@ export function generate({ start = '2020-01-06', end = '2026-09-04', seed = 42, 
         index++;
     }
     if (!index) throw new Error('期間に平日がありません。');
-    const names = ['オルカン（サンプル）', 'S&P500（サンプル）', 'TOPIX（サンプル）'];
+    const names = [
+        'オルカン（サンプル）', 'S&P500（サンプル）', 'TOPIX（サンプル）', 'NASDAQ100（サンプル）',
+    ];
     const manifest = {
         schemaVersion: 1, datasetVersion: version, isSample: true,
         publishedAt: `${end}T00:00:00Z`,
