@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-「たられば投資」＝複数の投資信託に同額を一括投資していた場合を比較するiOSアプリと、その価格データを配信するCloudflare Workersの2つで構成されたリポジトリです。現在の配信商品はオルカン・S&P500・TOPIX・NASDAQ100・日経平均・純金・新興国株の7本で、同時比較は7商品まで・既定は先頭2商品です。ドキュメント・コミットメッセージ・UI文言・エラーメッセージはすべて日本語で書きます。
+「たられば投資」＝複数の投資信託に同額を一括投資していた場合を比較するiOSアプリと、その価格データを配信するCloudflare Workersの2つで構成されたリポジトリです。現在の配信商品はオルカン・S&P500・TOPIX・NASDAQ100・日経平均・純金・新興国株・ナノテクの8本で、同時比較は8商品まで・既定は先頭2商品です。ドキュメント・コミットメッセージ・UI文言・エラーメッセージはすべて日本語で書きます。
 
 ## 構成
 
@@ -111,7 +111,7 @@ npm run dev                 # wrangler dev（public/ をローカル配信して
 - `Data/LocalSnapshotStore.swift` — Application Support配下に検証済みの単一スナップショットをatomic書き込み。バックアップ対象から除外。`origin == .bundled` の旧開発版キャッシュは採用しません。
 - `Domain/TradingDay.swift` — グレゴリオ暦・Asia/Tokyo固定の暦日。端末のカレンダー・タイムゾーンに依存しません。
 - `Domain/SimulationCalculator.swift` — 内部はすべて`Decimal`。評価額を1円へ四捨五入してから表示損益・差額を求めます（丸め後の値どうしで計算）。`Double`はグラフ描画時のみ。計算対象は `SimulationInput.fundIDs` の選択商品だけで、結果は配信順（オルカン→S&P500）に並べます。
-- `Models/Dataset.swift` — `ValidatedDataset.window(for:)` が**選択商品だけの共通観測日**を返します。全商品の積集合は取りません（履歴の短い商品を1つ足しただけで、無関係な商品の比較期間まで縮むため）。同時比較は `AppConfiguration.maximumComparisonFunds`（7商品）まで、既定は先頭2商品。商品を足すときは `AppPalette.seriesColors` の色数も足りているか確認します。
+- `Models/Dataset.swift` — `ValidatedDataset.window(for:)` が**選択商品だけの共通観測日**を返します。全商品の積集合は取りません（履歴の短い商品を1つ足しただけで、無関係な商品の比較期間まで縮むため）。同時比較は `AppConfiguration.maximumComparisonFunds`（8商品）まで、既定は先頭2商品。商品を足すときは `AppPalette.seriesColors` の色数も足りているか確認します。
 
 ### iOSのコードの前提
 

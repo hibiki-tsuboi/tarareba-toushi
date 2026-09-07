@@ -1,8 +1,8 @@
 {
   "schemaVersion": 2,
-  "datasetVersion": "mufg-20260907-5fc4b6f9839c",
+  "datasetVersion": "mufg-20260907-6f9fa2246bbe",
   "isSample": false,
-  "publishedAt": "2026-09-07T14:49:43Z",
+  "publishedAt": "2026-09-07T15:06:09Z",
   "funds": [
     {
       "id": "all-country",
@@ -65,6 +65,15 @@
       "path": "funds/emerging.json",
       "contentVersion": "fund-51f45f3baa0ba04374e33af5ba99ed4d3e355736328e26c6d9f41272711fe949",
       "firstDate": "2017-07-31",
+      "lastDate": "2026-09-07"
+    },
+    {
+      "id": "nanotech",
+      "displayName": "ｅＭＡＸＩＳ Ｎｅｏ ナノテクノロジー",
+      "currency": "JPY",
+      "path": "funds/nanotech.json",
+      "contentVersion": "fund-1e24e9205ce949128cc4c0df1f91a66010608d2d748ea0b3842595194a186031",
+      "firstDate": "2018-12-03",
       "lastDate": "2026-09-07"
     }
   ]

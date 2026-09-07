@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "datasetVersion": "sample-v6",
+  "datasetVersion": "sample-v7",
   "isSample": true,
   "publishedAt": "2026-09-07T00:00:00Z",
   "funds": [
@@ -8,7 +8,7 @@
       "id": "demo-all-country",
       "displayName": "オルカン（サンプル）",
       "currency": "JPY",
-      "path": "funds/demo-all-country.sample-v6.json",
+      "path": "funds/demo-all-country.sample-v7.json",
       "firstDate": "2020-01-06",
       "lastDate": "2026-09-07"
     },
@@ -16,7 +16,7 @@
       "id": "demo-sp500",
       "displayName": "S&P500（サンプル）",
       "currency": "JPY",
-      "path": "funds/demo-sp500.sample-v6.json",
+      "path": "funds/demo-sp500.sample-v7.json",
       "firstDate": "2020-01-06",
       "lastDate": "2026-09-07"
     },
@@ -24,7 +24,7 @@
       "id": "demo-topix",
       "displayName": "TOPIX（サンプル）",
       "currency": "JPY",
-      "path": "funds/demo-topix.sample-v6.json",
+      "path": "funds/demo-topix.sample-v7.json",
       "firstDate": "2020-01-06",
       "lastDate": "2026-09-07"
     },
@@ -32,7 +32,7 @@
       "id": "demo-nasdaq100",
       "displayName": "NASDAQ100（サンプル）",
       "currency": "JPY",
-      "path": "funds/demo-nasdaq100.sample-v6.json",
+      "path": "funds/demo-nasdaq100.sample-v7.json",
       "firstDate": "2020-01-06",
       "lastDate": "2026-09-07"
     },
@@ -40,7 +40,7 @@
       "id": "demo-nikkei225",
       "displayName": "日経平均（サンプル）",
       "currency": "JPY",
-      "path": "funds/demo-nikkei225.sample-v6.json",
+      "path": "funds/demo-nikkei225.sample-v7.json",
       "firstDate": "2020-01-06",
       "lastDate": "2026-09-07"
     },
@@ -48,7 +48,7 @@
       "id": "demo-gold",
       "displayName": "純金（サンプル）",
       "currency": "JPY",
-      "path": "funds/demo-gold.sample-v6.json",
+      "path": "funds/demo-gold.sample-v7.json",
       "firstDate": "2020-01-06",
       "lastDate": "2026-09-07"
     },
@@ -56,7 +56,15 @@
       "id": "demo-emerging",
       "displayName": "新興国株（サンプル）",
       "currency": "JPY",
-      "path": "funds/demo-emerging.sample-v6.json",
+      "path": "funds/demo-emerging.sample-v7.json",
+      "firstDate": "2020-01-06",
+      "lastDate": "2026-09-07"
+    },
+    {
+      "id": "demo-nanotech",
+      "displayName": "ナノテク（サンプル）",
+      "currency": "JPY",
+      "path": "funds/demo-nanotech.sample-v7.json",
       "firstDate": "2020-01-06",
       "lastDate": "2026-09-07"
     }

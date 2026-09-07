@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-export const ids = ['demo-all-country', 'demo-sp500', 'demo-topix', 'demo-nasdaq100', 'demo-nikkei225', 'demo-gold', 'demo-emerging'];
+export const ids = ['demo-all-country', 'demo-sp500', 'demo-topix', 'demo-nasdaq100', 'demo-nikkei225', 'demo-gold', 'demo-emerging', 'demo-nanotech'];
 // The funds the app compares. Extra products may be delivered alongside them.
 export const liveIDs = ['all-country', 'sp500'];
 export function day(value) {
