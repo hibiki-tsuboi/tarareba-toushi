@@ -35,8 +35,21 @@ final class ComparisonUITests: XCTestCase {
             XCTAssertLessThan(allCountryFrame.maxY, sp500Frame.minY)
             XCTAssertEqual(allCountryFrame.minX, sp500Frame.minX, accuracy: 2)
         }
-        XCTAssertFalse(app.buttons["前の観測日"].exists)
         capture(app, name: "comparison-results")
+
+        // The chart opens on the last common day and reads the same amounts as the cards.
+        reveal(app.staticTexts["chart-selected-day"], in: app)
+        XCTAssertEqual(app.staticTexts["chart-selected-day"].label, "2026/09/04")
+        XCTAssertTrue(chartRow(app, "all-country").label.contains("1,200,000円"))
+        XCTAssertTrue(chartRow(app, "sp500").label.contains("1,400,000円"))
+        capture(app, name: "comparison-chart")
+        // Stepping back moves the readout to that day without touching the cards.
+        tapVisible(app.buttons["前の観測日"], in: app)
+        XCTAssertEqual(app.staticTexts["chart-selected-day"].label, "2026/09/03")
+        XCTAssertTrue(chartRow(app, "all-country").label.contains("1,190,000円"))
+        XCTAssertTrue(chartRow(app, "sp500").label.contains("1,390,000円"))
+        reveal(app.staticTexts["valuation-all-country"], in: app)
+        XCTAssertEqual(app.staticTexts["valuation-all-country"].label, "1,200,000円")
 
         app.buttons["data-info"].tap()
         XCTAssertTrue(app.navigationBars["データと計算について"].waitForExistence(timeout: 5))
@@ -102,6 +115,9 @@ final class ComparisonUITests: XCTestCase {
             app.descendants(matching: .any).matching(identifier: $0).firstMatch.frame.minY
         }
         XCTAssertEqual(ranks, ranks.sorted(), "the ranking is ordered by valuation")
+        // The chart carries a line, and a readout row, for every selected fund.
+        reveal(app.staticTexts["chart-selected-day"], in: app)
+        XCTAssertTrue(chartRow(app, "topix").label.contains("1,100,000円"))
         capture(app, name: "three-fund-results")
     }
 
@@ -179,6 +195,10 @@ final class ComparisonUITests: XCTestCase {
         XCTAssertEqual(app.staticTexts["valuation-demo-sp500"].label, "1,000,000円")
         XCTAssertEqual(app.staticTexts["comparison-difference"].label, "0円")
         XCTAssertEqual(app.staticTexts["comparison-summary"].label, "表示上の差額は0円。同じ結果でした。")
+        // A single common day leaves nothing to step to on either side.
+        XCTAssertTrue(app.buttons["前の観測日"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["前の観測日"].isEnabled)
+        XCTAssertFalse(app.buttons["次の観測日"].isEnabled)
         app.buttons["data-info"].tap()
         let refresh = app.buttons["refresh-data"]
         XCTAssertTrue(refresh.waitForExistence(timeout: 5))
@@ -213,6 +233,9 @@ final class ComparisonUITests: XCTestCase {
         capture(app, name: "comparison-accessibility-results-scrolled")
         reveal(app.staticTexts["comparison-difference"], in: app)
         XCTAssertEqual(app.staticTexts["comparison-difference"].label, "200,000円")
+        reveal(app.staticTexts["chart-selected-day"], in: app)
+        XCTAssertTrue(chartRow(app, "demo-all-country").label.contains("1,200,000円"))
+        capture(app, name: "comparison-accessibility-chart")
         tapVisible(app.buttons["edit-input"], in: app)
         XCTAssertTrue(app.textFields["investment-amount"].waitForExistence(timeout: 5))
     }
@@ -335,6 +358,11 @@ final class ComparisonUITests: XCTestCase {
     @MainActor private func tapVisible(_ element: XCUIElement, in app: XCUIApplication) {
         reveal(element, in: app)
         element.tap()
+    }
+
+    // The readout rows combine their name and amount into one element.
+    @MainActor private func chartRow(_ app: XCUIApplication, _ id: String) -> XCUIElement {
+        app.descendants(matching: .any).matching(identifier: "chart-value-\(id)").firstMatch
     }
 
     @MainActor private func capture(_ app: XCUIApplication, name: String) {

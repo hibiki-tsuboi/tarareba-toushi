@@ -118,7 +118,7 @@ npm run dev                 # wrangler dev（public/ をローカル配信して
 - ビルド設定は `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` ＋ `SWIFT_APPROACHABLE_CONCURRENCY = YES`（Swift 5言語モード）。**既定でMainActor隔離**なので、`DatasetMode` / `AppConfiguration` / `FixtureURLProtocol` のようにアクターを跨ぐ型にだけ明示的に `nonisolated` を付けます。
 - 単体テストはSwift Testing（`@Test` / `#expect`）、UIテストはXCTest。フィクスチャは各テストターゲットの `TestFixtures.swift` / `UITestFixtures.swift` に集約します。
 - テスト用の分岐（`--ui-testing` と `TARAREBA_TEST_*`）はすべて `#if DEBUG` の中にあり、Releaseビルドには入りません。UIテストは `TARAREBA_TEST_SESSION` ごとに `UserDefaults(suiteName:)` と保存先を分けるので、テスト間で入力値やキャッシュが混ざりません。
-- `accessibilityIdentifier` はUIテストとの契約です（`simulate` / `refresh-data` / `data-info` / `edit-input` / `input-error` / `comparison-difference` など）。評価額と損益は `valuation-<商品ID>` / `profit-<商品ID>` と商品IDから組み立てるため、商品IDを変えるとUIテストの参照先も変わります。
+- `accessibilityIdentifier` はUIテストとの契約です（`simulate` / `refresh-data` / `data-info` / `edit-input` / `input-error` / `comparison-difference` など）。評価額と損益、グラフの読み取り行は `valuation-<商品ID>` / `profit-<商品ID>` / `chart-value-<商品ID>` と商品IDから組み立てるため、商品IDを変えるとUIテストの参照先も変わります。
 - コーディングスタイル（4スペース、型名とファイル名の一致、View型の `View` 接尾辞、MainActor前提）は `AGENTS.md` の該当節が現行の指針です。SwiftLint / SwiftFormatの設定はありません。
 
 ## 変更時に守ること

@@ -1,24 +1,41 @@
 import Charts
 import SwiftUI
 
+/// The lines are drawn from a thinned copy of each series; every amount shown beside the
+/// chart is read from the untouched one, so no displayed figure depends on what the
+/// thinning left out.
 struct ValuationChartView: View {
     let result: SimulationResult
     @State private var selectedDate: Date?
+    private let plotted: [[PlotPoint]]
+    private let upperBound: Double
 
-    private var selectedIndex: Int {
-        guard let points = result.funds.first?.points else { return 0 }
-        guard let selectedDate else { return max(0, points.count - 1) }
-        return points.indices.min(by: {
-            abs(points[$0].day.date.timeIntervalSince(selectedDate))
-                < abs(points[$1].day.date.timeIntervalSince(selectedDate))
-        }) ?? 0
+    init(result: SimulationResult) {
+        self.result = result
+        let plotted = result.funds.map { Self.plot($0.points) }
+        let highest = plotted.flatMap { $0 }.map(\.value).max() ?? Double(result.input.amount)
+        self.plotted = plotted
+        // Zero stays on the axis: the distance between the lines is the answer the screen
+        // gives, and a cropped baseline would enlarge it.
+        self.upperBound = max(1, highest * 1.12)
     }
 
-    private var upperBound: Double {
-        let maximum =
-            result.funds.flatMap(\.points).map { NSDecimalNumber(decimal: $0.amount).doubleValue }.max()
-            ?? Double(result.input.amount)
-        return max(1, maximum * 1.12)
+    private struct PlotPoint: Identifiable {
+        let id: String
+        let date: Date
+        let value: Double
+    }
+
+    // Every selected fund is priced on the same common days, so the first one answers for all.
+    private var days: [ValuationPoint] { result.funds.first?.points ?? [] }
+
+    private var selectedIndex: Int {
+        guard !days.isEmpty else { return 0 }
+        guard let selectedDate else { return days.count - 1 }
+        return days.indices.min(by: {
+            abs(days[$0].day.date.timeIntervalSince(selectedDate))
+                < abs(days[$1].day.date.timeIntervalSince(selectedDate))
+        }) ?? 0
     }
 
     private var dateDomain: ClosedRange<Date> {
@@ -28,9 +45,27 @@ struct ValuationChartView: View {
         return result.startDate.date...result.endDate.date
     }
 
+    // The middle date is dropped unless it stands clear of both ends: the last two common
+    // days can sit a day apart, and their labels would then print on top of each other.
     private var axisDates: [Date] {
-        guard let points = result.funds.first?.points, !points.isEmpty else { return [] }
-        return Array(Set([points[0].day.date, points[points.count / 2].day.date, points[points.count - 1].day.date])).sorted()
+        guard let first = days.first?.day.date, let last = days.last?.day.date, first < last else {
+            return days.first.map { [$0.day.date] } ?? []
+        }
+        let middle = days[days.count / 2].day.date
+        let margin = last.timeIntervalSince(first) * 0.15
+        guard middle.timeIntervalSince(first) > margin, last.timeIntervalSince(middle) > margin else {
+            return [first, last]
+        }
+        return [first, middle, last]
+    }
+
+    private var chartDescription: String {
+        let subject = result.funds.count == 1
+            ? "\(result.funds[0].shortName)の評価額推移"
+            : "\(result.funds.count)商品の評価額推移"
+        let origin = result.isSample
+            ? "実際の運用実績ではありません。" : "過去の基準価額から計算した値です。"
+        return "\(subject)。\(origin)下の前後ボタンで観測日を選ぶと、その日の評価額を確認できます。"
     }
 
     var body: some View {
@@ -40,54 +75,12 @@ struct ValuationChartView: View {
                 Spacer()
                 Text("円").font(.caption).foregroundStyle(.secondary)
             }
-            VStack(alignment: .leading, spacing: 8) {
-                ForEach(Array(result.funds.enumerated()), id: \.element.id) { i, fund in
-                    Label(fund.descriptor.displayName, systemImage: i == 0 ? "circle.fill" : "diamond.fill")
-                        .font(.caption)
-                        .foregroundStyle(AppPalette.series(i))
-                }
-                Label("元本 \(MoneyFormat.yen(Decimal(result.input.amount)))", systemImage: "minus")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
             chart
-            if let first = result.funds.first, first.points.indices.contains(selectedIndex) {
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack {
-                        Text(first.points[selectedIndex].day.label).font(.subheadline.monospacedDigit().bold())
-                        Spacer()
-                        Button("前の観測日", systemImage: "chevron.left") { select(index: selectedIndex - 1) }
-                            .labelStyle(.iconOnly)
-                            .frame(minWidth: 44, minHeight: 44)
-                            .disabled(selectedIndex == 0)
-                        Button("次の観測日", systemImage: "chevron.right") { select(index: selectedIndex + 1) }
-                            .labelStyle(.iconOnly)
-                            .frame(minWidth: 44, minHeight: 44)
-                            .disabled(selectedIndex == first.points.count - 1)
-                    }
-                    ForEach(Array(result.funds.enumerated()), id: \.element.id) { i, fund in
-                        ViewThatFits(in: .horizontal) {
-                            HStack {
-                                Text(fund.descriptor.displayName)
-                                Spacer()
-                                Text(MoneyFormat.yen(fund.points[selectedIndex].amount)).fontWeight(.semibold)
-                            }
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(fund.descriptor.displayName)
-                                Text(MoneyFormat.yen(fund.points[selectedIndex].amount)).fontWeight(.semibold)
-                            }
-                        }
-                        .font(.caption)
-                        .foregroundStyle(AppPalette.series(i))
-                        .accessibilityElement(children: .combine)
-                    }
-                }
-                .padding(12)
-                .background(Color(uiColor: .tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14))
-            }
+            readout
             Text("グラフをなぞると、その日の評価額を確認できます。共通の観測日のみを結んでいます。")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .cardSurface()
     }
@@ -97,27 +90,25 @@ struct ValuationChartView: View {
             RuleMark(y: .value("元本", result.input.amount))
                 .foregroundStyle(Color.secondary.opacity(0.65))
                 .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
-            ForEach(Array(result.funds.enumerated()), id: \.element.id) { i, fund in
-                ForEach(fund.points) { point in
+            // Colour alone separates the series: eight hues stay tellable apart, eight
+            // dash patterns do not.
+            ForEach(Array(result.funds.enumerated()), id: \.element.id) { index, fund in
+                ForEach(plotted[index]) { point in
                     LineMark(
-                        x: .value("日付", point.day.date),
-                        y: .value("評価額", NSDecimalNumber(decimal: point.amount).doubleValue),
+                        x: .value("日付", point.date),
+                        y: .value("評価額", point.value),
                         series: .value("商品", fund.id)
                     )
-                    .foregroundStyle(AppPalette.series(i))
-                    .lineStyle(StrokeStyle(lineWidth: 2.5, dash: i == 0 ? [] : [6, 3]))
-                    if fund.points.count == 1 {
-                        PointMark(
-                            x: .value("日付", point.day.date),
-                            y: .value("評価額", NSDecimalNumber(decimal: point.amount).doubleValue)
-                        )
-                        .foregroundStyle(AppPalette.series(i))
-                        .symbol(i == 0 ? .circle : .diamond)
+                    .foregroundStyle(AppPalette.series(index))
+                    .lineStyle(StrokeStyle(lineWidth: 2, lineJoin: .round))
+                    if plotted[index].count == 1 {
+                        PointMark(x: .value("日付", point.date), y: .value("評価額", point.value))
+                            .foregroundStyle(AppPalette.series(index))
                     }
                 }
             }
-            if let first = result.funds.first, first.points.indices.contains(selectedIndex), selectedDate != nil {
-                RuleMark(x: .value("選択日", first.points[selectedIndex].day.date))
+            if days.indices.contains(selectedIndex), selectedDate != nil {
+                RuleMark(x: .value("選択日", days[selectedIndex].day.date))
                     .foregroundStyle(Color.secondary.opacity(0.4))
             }
         }
@@ -151,17 +142,123 @@ struct ValuationChartView: View {
                         format: .dateTime.year(.twoDigits).month(.twoDigits).day(.twoDigits),
                         centered: false,
                         anchor: value.index == 0 ? .topLeading : value.index == axisDates.count - 1 ? .topTrailing : .top)
+                        .font(.caption2)
                 }
             }
         }
         .frame(height: 230)
-        .accessibilityLabel(result.isSample
-            ? "2商品の評価額推移。実際の運用実績ではありません。下の前後ボタンでも観測日を選択できます。"
-            : "過去の基準価額から計算した2商品の評価額推移。下の前後ボタンでも観測日を選択できます。")
+        // Axis labels stop growing before they crowd out the plot. Nothing is lost by it:
+        // the readout below repeats every date and amount at the reader's own text size.
+        .dynamicTypeSize(...DynamicTypeSize.xxLarge)
+        // One label for the whole plot: stepping through hundreds of marks one at a time
+        // is no way to read it, and the rows below say the same thing in words.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(chartDescription)
+        .accessibilityIdentifier("valuation-chart")
+    }
+
+    // Doubles as the legend, so the colours are never listed twice.
+    @ViewBuilder private var readout: some View {
+        if days.indices.contains(selectedIndex) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text(days[selectedIndex].day.label)
+                        .font(.subheadline.monospacedDigit().bold())
+                        .accessibilityIdentifier("chart-selected-day")
+                    Spacer()
+                    Button("前の観測日", systemImage: "chevron.left") { select(index: selectedIndex - 1) }
+                        .labelStyle(.iconOnly)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .disabled(selectedIndex == 0)
+                    Button("次の観測日", systemImage: "chevron.right") { select(index: selectedIndex + 1) }
+                        .labelStyle(.iconOnly)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .disabled(selectedIndex == days.count - 1)
+                }
+                ForEach(Array(result.funds.enumerated()), id: \.element.id) { index, fund in
+                    row(
+                        color: AppPalette.series(index), name: fund.shortName,
+                        amount: fund.points[selectedIndex].amount
+                    )
+                    .accessibilityIdentifier("chart-value-\(fund.id)")
+                }
+                row(color: .secondary, dashed: true, name: "元本", amount: Decimal(result.input.amount))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(12)
+            .background(Color(uiColor: .tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14))
+        }
+    }
+
+    private func row(color: Color, dashed: Bool = false, name: String, amount: Decimal) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) {
+                SeriesSwatch(color: color, dashed: dashed)
+                Text(name)
+                Spacer(minLength: 8)
+                Text(MoneyFormat.yen(amount)).fontWeight(.semibold).monospacedDigit()
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 8) {
+                    SeriesSwatch(color: color, dashed: dashed)
+                    Text(name)
+                }
+                Text(MoneyFormat.yen(amount)).fontWeight(.semibold).monospacedDigit()
+            }
+        }
+        .font(.caption)
+        .accessibilityElement(children: .combine)
     }
 
     private func select(index: Int) {
-        guard let points = result.funds.first?.points, points.indices.contains(index) else { return }
-        selectedDate = points[index].day.date
+        guard days.indices.contains(index) else { return }
+        selectedDate = days[index].day.date
+    }
+
+    // Drawn with the same stroke as the mark it stands for.
+    private struct SeriesSwatch: View {
+        let color: Color
+        let dashed: Bool
+        @ScaledMetric(relativeTo: .caption) private var width: CGFloat = 16
+
+        var body: some View {
+            Path {
+                $0.move(to: CGPoint(x: 1.5, y: 1.5))
+                $0.addLine(to: CGPoint(x: width - 1.5, y: 1.5))
+            }
+            .stroke(color, style: StrokeStyle(lineWidth: 3, lineCap: .round, dash: dashed ? [3, 3] : []))
+            .frame(width: width, height: 3)
+            .accessibilityHidden(true)
+        }
+    }
+
+    // Eight full histories run past ten thousand points and Swift Charts turns sluggish
+    // long before that. Each bucket keeps its highest and its lowest observation, so every
+    // peak and trough survives at its own date; nothing is averaged, moved or invented.
+    static let plottedPointLimit = 600
+
+    private static func plot(_ points: [ValuationPoint]) -> [PlotPoint] {
+        thinned(points).map {
+            PlotPoint(
+                id: $0.day.rawValue, date: $0.day.date,
+                value: NSDecimalNumber(decimal: $0.amount).doubleValue)
+        }
+    }
+
+    static func thinned(_ points: [ValuationPoint]) -> [ValuationPoint] {
+        guard points.count > plottedPointLimit else { return points }
+        let buckets = plottedPointLimit / 2
+        var kept = [0]
+        for bucket in 0..<buckets {
+            let range = (points.count * bucket / buckets)..<(points.count * (bucket + 1) / buckets)
+            guard let low = range.min(by: { points[$0].amount < points[$1].amount }),
+                let high = range.max(by: { points[$0].amount < points[$1].amount })
+            else { continue }
+            for index in [min(low, high), max(low, high)] where index != kept[kept.count - 1] {
+                kept.append(index)
+            }
+        }
+        if kept[kept.count - 1] != points.count - 1 { kept.append(points.count - 1) }
+        return kept.map { points[$0] }
     }
 }
