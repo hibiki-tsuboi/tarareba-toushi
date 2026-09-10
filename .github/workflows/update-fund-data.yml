@@ -1,9 +1,13 @@
 name: Update fund data
 
 on:
-  schedule:
-    # 07:17 JST every day. Fixed files are unchanged when the source is unchanged.
-    - cron: '17 22 * * *'
+  # The daily schedule is disabled while the fund data is updated by hand.
+  # To resume, register CLOUDFLARE_API_TOKEN in the repository Actions secrets and
+  # restore the two lines below. Publication then starts on the next scheduled run:
+  # it commits public/live to the default branch and deploys to Cloudflare.
+  #   schedule:
+  #     # 07:17 JST every day. Fixed files are unchanged when the source is unchanged.
+  #     - cron: '17 22 * * *'
   workflow_dispatch:
 
 permissions:
