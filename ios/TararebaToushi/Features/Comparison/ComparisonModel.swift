@@ -9,6 +9,11 @@ final class ComparisonModel {
     private(set) var selection: [String]
     private(set) var result: SimulationResult?
     private(set) var inputError: String?
+    // Shown in the fund picker, where the tap that caused it happened.
+    private(set) var selectionMessage: String?
+    // The start date the model last moved into the selected funds' period. The notice
+    // stands while the date is still that one.
+    private(set) var adjustedDate: Date?
     // The plan not on screen keeps its own amount: a lump sum and a monthly instalment
     // differ by orders of magnitude, so neither makes a sensible default for the other.
     @ObservationIgnored private var otherAmountText: String
@@ -59,19 +64,42 @@ final class ComparisonModel {
         var chosen = Set(selectedIDs(in: dataset))
         if chosen.contains(id) {
             guard chosen.count > 1 else {
-                inputError = "商品を1つ以上選んでください。"
+                selectionMessage = "商品を1つ以上選んでください。"
                 return
             }
             chosen.remove(id)
         } else {
             guard chosen.count < AppConfiguration.maximumComparisonFunds else {
-                inputError = "同時に比較できるのは\(AppConfiguration.maximumComparisonFunds)商品までです。"
+                selectionMessage = "同時に比較できるのは\(AppConfiguration.maximumComparisonFunds)商品までです。"
                 return
             }
             chosen.insert(id)
         }
+        selectionMessage = nil
         inputError = nil
         selection = dataset.funds.map(\.descriptor.id).filter { chosen.contains($0) }
+        fitDate(in: dataset)
+    }
+
+    func clearSelectionMessage() {
+        selectionMessage = nil
+    }
+
+    func startRange(in dataset: ValidatedDataset) -> ClosedRange<TradingDay>? {
+        try? dataset.startRange(for: selectedIDs(in: dataset))
+    }
+
+    // A fund with a shorter history can leave the chosen date outside the period the
+    // selection shares; it moves to the nearest day that can be compared instead.
+    func fitDate(in dataset: ValidatedDataset) {
+        guard let range = startRange(in: dataset), let day = try? TradingDay(date: selectedDate) else { return }
+        let fitted = min(max(day, range.lowerBound), range.upperBound)
+        guard fitted != day else {
+            adjustedDate = nil
+            return
+        }
+        selectedDate = fitted.date
+        adjustedDate = fitted.date
     }
 
     func select(_ plan: InvestmentPlan) {

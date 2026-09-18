@@ -4,6 +4,7 @@ struct ContentView: View {
     @State private var repository = FundRepository.makeDefault()
     @State private var model = ComparisonModel()
     @State private var showsInformation = false
+    @State private var showsFundPicker = false
     @State private var showsResults = false
     @Environment(\.scenePhase) private var scenePhase
     @FocusState private var amountFocused: Bool
@@ -23,13 +24,6 @@ struct ContentView: View {
                 VStack(alignment: .leading, spacing: 24) {
                     introduction
                     inputCard
-                    if let error = model.inputError {
-                        Label(error, systemImage: "exclamationmark.circle")
-                            .font(.callout)
-                            .foregroundStyle(.orange)
-                            .accessibilityIdentifier("input-error")
-                    }
-                    simulateButton
                     if repository.dataset == nil { initialDataStatus }
                 }
                 .padding(20)
@@ -38,6 +32,8 @@ struct ContentView: View {
             }
             .background(Color(uiColor: .systemGroupedBackground))
             .scrollDismissesKeyboard(.interactively)
+            // Always in reach, whatever part of the form is on screen.
+            .safeAreaBar(edge: .bottom) { actionBar }
             .navigationTitle("たられば投資")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -51,12 +47,25 @@ struct ContentView: View {
                 }
             }
             .sheet(isPresented: $showsInformation) { DataInformationView(repository: repository, result: nil) }
+            .sheet(isPresented: $showsFundPicker) {
+                if let dataset = repository.dataset {
+                    FundPickerView(
+                        funds: dataset.funds.map(\.descriptor),
+                        selection: model.selectedIDs(in: dataset),
+                        message: model.selectionMessage,
+                        onToggle: { model.toggle($0, in: dataset) })
+                }
+            }
             .navigationDestination(isPresented: $showsResults) {
                 if let result = model.result {
                     SimulationResultView(result: result, repository: repository)
                 }
             }
             .task { await repository.start(refresh: automaticallyRefreshes) }
+            // A saved or launch date may fall outside what the loaded data can compare.
+            .onChange(of: repository.dataset?.snapshot.manifest.datasetVersion, initial: true) {
+                if let dataset = repository.dataset { model.fitDate(in: dataset) }
+            }
             .onChange(of: amountFocused) { _, focused in if !focused { model.finishAmountEditing() } }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active, automaticallyRefreshes { Task { await repository.refresh() } }
@@ -83,16 +92,19 @@ struct ContentView: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .padding(.vertical, 12)
+        .padding(.top, 12)
     }
 
     private var inputCard: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: 16) {
             if let dataset = repository.dataset {
-                FundPickerView(
-                    funds: dataset.funds.map(\.descriptor),
-                    selection: model.selectedIDs(in: dataset),
-                    onToggle: { model.toggle($0, in: dataset) })
+                SelectedFundsView(
+                    funds: selectedFunds(in: dataset),
+                    onChange: {
+                        amountFocused = false
+                        model.clearSelectionMessage()
+                        showsFundPicker = true
+                    })
                 Divider()
             }
             VStack(alignment: .leading, spacing: 10) {
@@ -112,13 +124,28 @@ struct ContentView: View {
                 Text("開始日")
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(.secondary)
-                DatePicker("開始日", selection: $model.selectedDate, displayedComponents: .date)
+                DatePicker("開始日", selection: $model.selectedDate, in: dateBounds, displayedComponents: .date)
                     .datePickerStyle(.compact)
                     .labelsHidden()
                     .accessibilityLabel("開始日")
                     .accessibilityIdentifier("investment-date")
+                if let range = startRange {
+                    Text("選べる期間：\(range.lowerBound.label)〜\(range.upperBound.label)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("date-range")
+                }
+                if let adjusted = model.adjustedDate, adjusted == model.selectedDate,
+                    let day = try? TradingDay(date: adjusted)
+                {
+                    Label("選んだ商品のデータがそろう期間に合わせて、開始日を\(day.label)にしました。", systemImage: "info.circle")
+                        .font(.caption)
+                        .foregroundStyle(.tint)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("date-adjustment")
+                }
                 if model.plan == .monthly {
-                    Text("毎月この日付に購入します。データのない日は、その後の最初の観測日に購入します。")
+                    Text("毎月この日付に購入します。データのない日（休場日など）は、次にデータのある日に購入します。")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -154,6 +181,45 @@ struct ContentView: View {
     }
 
     private var amountTitle: String { model.plan == .monthly ? "毎月の積立額" : "投資金額" }
+
+    // In delivered order, which is the order and colouring of the results.
+    private func selectedFunds(in dataset: ValidatedDataset) -> [FundDescriptor] {
+        let ids = Set(model.selectedIDs(in: dataset))
+        return dataset.funds.map(\.descriptor).filter { ids.contains($0.id) }
+    }
+
+    private var startRange: ClosedRange<TradingDay>? {
+        repository.dataset.flatMap { model.startRange(in: $0) }
+    }
+
+    // Whole days, so the time of day the picker carries never shuts out the last one.
+    private var dateBounds: ClosedRange<Date> {
+        guard let range = startRange else { return Date.distantPast...Date.distantFuture }
+        let calendar = TradingDay.calendar
+        let first = calendar.startOfDay(for: range.lowerBound.date)
+        let lastDay = calendar.startOfDay(for: range.upperBound.date)
+        let last = calendar.date(byAdding: DateComponents(day: 1, second: -1), to: lastDay) ?? range.upperBound.date
+        return first...last
+    }
+
+    private var actionBar: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if let error = model.inputError {
+                Label(error, systemImage: "exclamationmark.circle")
+                    .font(.callout)
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("input-error")
+            }
+            simulateButton
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 8)
+        .frame(maxWidth: 560)
+        .frame(maxWidth: .infinity)
+        // A bar that grew with the largest text sizes would cover most of the form it serves.
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+    }
 
     private var planSelection: Binding<InvestmentPlan> {
         Binding(

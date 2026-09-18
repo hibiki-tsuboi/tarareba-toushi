@@ -8,12 +8,22 @@ final class ComparisonUITests: XCTestCase {
         XCTAssertTrue(app.textFields["investment-amount"].exists)
         XCTAssertTrue(app.datePickers["investment-date"].exists)
         XCTAssertEqual(app.buttons["simulate"].label, "2つを比較する")
-        XCTAssertTrue(app.buttons["fund-all-country"].isSelected)
-        XCTAssertTrue(app.buttons["fund-sp500"].isSelected)
-        XCTAssertEqual(app.staticTexts["fund-selection-count"].label, "8商品中2商品を選択中")
+        // The button stays in reach without scrolling to the end of the form.
+        XCTAssertTrue(app.buttons["simulate"].isHittable)
+        XCTAssertEqual(app.buttons["fund-selection"].label, "比べる投資信託：オルカン、S&P500")
+        XCTAssertEqual(app.staticTexts["date-range"].label, "選べる期間：2020/01/06〜2026/09/04")
+        XCTAssertFalse(app.staticTexts["date-adjustment"].exists)
         XCTAssertFalse(app.staticTexts["valuation-all-country"].exists)
         XCTAssertFalse(app.buttons["preset-5"].exists)
         capture(app, name: "comparison-input")
+
+        openFundPicker(app)
+        XCTAssertTrue(app.buttons["fund-all-country"].isSelected)
+        XCTAssertTrue(app.buttons["fund-sp500"].isSelected)
+        XCTAssertFalse(app.buttons["fund-topix"].isSelected)
+        XCTAssertEqual(app.staticTexts["fund-selection-count"].label, "2商品を選択中（8商品まで選べます）")
+        capture(app, name: "fund-picker")
+        closeFundPicker(app)
 
         simulate(app)
         XCTAssertTrue(app.staticTexts["profit-all-country"].waitForExistence(timeout: 5))
@@ -66,8 +76,11 @@ final class ComparisonUITests: XCTestCase {
         let app = UITestFixtures.app(mode: "live")
         app.launch()
         waitForSimulation(app)
-        tapVisible(app.buttons["fund-all-country"], in: app)
+        openFundPicker(app)
+        app.buttons["fund-all-country"].tap()
         XCTAssertFalse(app.buttons["fund-all-country"].isSelected)
+        closeFundPicker(app)
+        XCTAssertEqual(app.buttons["fund-selection"].label, "比べる投資信託：S&P500")
         XCTAssertEqual(app.buttons["simulate"].label, "結果を見る")
         capture(app, name: "single-fund-input")
 
@@ -83,27 +96,31 @@ final class ComparisonUITests: XCTestCase {
         tapVisible(app.buttons["edit-input"], in: app)
         // The pop back to the input screen swallows a tap while it is still animating.
         waitForSimulation(app)
-        XCTAssertTrue(app.buttons["fund-sp500"].waitForExistence(timeout: 5))
-        tapVisible(app.buttons["fund-sp500"], in: app)
+        openFundPicker(app)
+        app.buttons["fund-sp500"].tap()
         XCTAssertTrue(app.buttons["fund-sp500"].isSelected)
-        XCTAssertTrue(app.staticTexts["input-error"].waitForExistence(timeout: 5))
-        XCTAssertEqual(app.staticTexts["input-error"].label, "商品を1つ以上選んでください。")
+        XCTAssertTrue(app.staticTexts["fund-selection-error"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["fund-selection-error"].label, "商品を1つ以上選んでください。")
+        closeFundPicker(app)
+        XCTAssertFalse(app.staticTexts["input-error"].exists)
 
         // The selection survives a relaunch.
         app.terminate()
         app.launch()
         waitForSimulation(app)
-        XCTAssertFalse(app.buttons["fund-all-country"].isSelected)
-        XCTAssertTrue(app.buttons["fund-sp500"].isSelected)
+        XCTAssertEqual(app.buttons["fund-selection"].label, "比べる投資信託：S&P500")
     }
 
     @MainActor func testCheckingAThirdFundRanksResultsAndShowsTheWidestGap() {
         let app = UITestFixtures.app(mode: "live")
         app.launch()
         waitForSimulation(app)
-        tapVisible(app.buttons["fund-topix"], in: app)
+        openFundPicker(app)
+        app.buttons["fund-topix"].tap()
         XCTAssertTrue(app.buttons["fund-topix"].isSelected)
-        XCTAssertEqual(app.staticTexts["fund-selection-count"].label, "8商品中3商品を選択中")
+        XCTAssertEqual(app.staticTexts["fund-selection-count"].label, "3商品を選択中（8商品まで選べます）")
+        closeFundPicker(app)
+        XCTAssertEqual(app.buttons["fund-selection"].label, "比べる投資信託：オルカン、S&P500、TOPIX")
         XCTAssertEqual(app.buttons["simulate"].label, "3つを比較する")
 
         simulate(app)
@@ -290,6 +307,9 @@ final class ComparisonUITests: XCTestCase {
         XCTAssertTrue(app.textFields["investment-amount"].waitForExistence(timeout: 10))
         waitForSimulation(app)
         capture(app, name: "comparison-accessibility-input")
+        // The selection counts as hittable while still under the bar, so scroll past the title outright.
+        app.swipeUp()
+        capture(app, name: "comparison-accessibility-fund-selection")
         simulate(app)
         XCTAssertTrue(app.staticTexts["profit-demo-all-country"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.staticTexts["profit-demo-all-country"].label, "＋200,000円")
@@ -376,17 +396,20 @@ final class ComparisonUITests: XCTestCase {
             app.staticTexts["comparison-difference"].label], values)
     }
 
-    @MainActor func testUnavailableDateStaysOnInput() {
+    @MainActor func testOutOfRangeDateMovesIntoTheComparablePeriod() {
         let app = UITestFixtures.app()
         app.launchEnvironment["TARAREBA_TEST_DATE"] = "2026-09-05"
         app.launch()
         waitForSimulation(app)
-        XCTAssertFalse(app.staticTexts["input-error"].exists)
+        // The fixture's common days end on 2026-09-04, so the date moves back to it and says so.
+        let notice = app.staticTexts["date-adjustment"]
+        XCTAssertTrue(notice.waitForExistence(timeout: 5))
+        XCTAssertEqual(notice.label, "選んだ商品のデータがそろう期間に合わせて、開始日を2026/09/04にしました。")
+        capture(app, name: "date-adjusted-input")
         simulate(app)
-        XCTAssertTrue(app.staticTexts["input-error"].waitForExistence(timeout: 3))
-        XCTAssertTrue(app.staticTexts["input-error"].label.contains("この期間のデータがありません"))
-        XCTAssertTrue(app.datePickers["investment-date"].exists)
-        XCTAssertFalse(app.staticTexts["valuation-demo-all-country"].exists)
+        XCTAssertTrue(app.staticTexts["valuation-demo-all-country"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["valuation-demo-all-country"].label, "1,000,000円")
+        XCTAssertFalse(app.staticTexts["input-error"].exists)
     }
 
     @MainActor private func waitForSimulation(_ app: XCUIApplication) {
@@ -399,6 +422,16 @@ final class ComparisonUITests: XCTestCase {
     @MainActor private func simulate(_ app: XCUIApplication) {
         waitForSimulation(app)
         tapVisible(app.buttons["simulate"], in: app)
+    }
+
+    @MainActor private func openFundPicker(_ app: XCUIApplication) {
+        tapVisible(app.buttons["fund-selection"], in: app)
+        XCTAssertTrue(app.buttons["fund-picker-done"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor private func closeFundPicker(_ app: XCUIApplication) {
+        app.buttons["fund-picker-done"].tap()
+        XCTAssertTrue(app.buttons["fund-picker-done"].waitForNonExistence(timeout: 5))
     }
 
     @MainActor private func replaceAmount(in app: XCUIApplication, with text: String) {

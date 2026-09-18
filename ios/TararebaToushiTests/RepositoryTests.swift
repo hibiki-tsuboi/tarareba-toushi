@@ -171,7 +171,7 @@ import Testing
         #expect(model.selectedIDs(in: dataset) == ["demo-sp500"])
         model.toggle("demo-sp500", in: dataset)
         #expect(model.selectedIDs(in: dataset) == ["demo-sp500"])
-        #expect(model.inputError != nil)
+        #expect(model.selectionMessage != nil)
 
         model.recalculate(dataset: dataset)
         #expect(model.result?.funds.map(\.id) == ["demo-sp500"])

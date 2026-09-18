@@ -101,6 +101,22 @@ nonisolated struct ValidatedDataset: Sendable {
     func window(for ids: [String]) throws -> ComparisonWindow {
         try window(for: try funds(for: ids))
     }
+
+    // The same bounds window(for:) enforces, without intersecting whole histories: the input
+    // screen asks again on every change. The last common day has to be one of the days of
+    // the history that ends first, so walking that one back finds it.
+    func startRange(for ids: [String]) throws -> ClosedRange<TradingDay> {
+        let selected = try funds(for: ids)
+        let earliest = try selected.map { try TradingDay($0.descriptor.firstDate) }.max()
+        guard let earliest, let endsFirst = selected.min(by: { $0.descriptor.lastDate < $1.descriptor.lastDate })
+        else { throw DataIssue("選択した商品に共通する観測日がありません。") }
+        for observation in endsFirst.series.observations.reversed() {
+            let day = try TradingDay(observation.date)
+            guard day >= earliest else { break }
+            if selected.allSatisfy({ $0.values[day] != nil }) { return earliest...day }
+        }
+        throw DataIssue("選択した商品に共通する観測日がありません。")
+    }
 }
 
 nonisolated struct DataIssue: LocalizedError, Equatable, Sendable {
