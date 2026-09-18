@@ -209,6 +209,7 @@ import Testing
         defaults.set(legacy, forKey: "comparison.input.v1")
 
         let model = ComparisonModel(defaults: defaults)
+        #expect(model.plan == .lumpSum)
         #expect(model.amountText == "2,000,000")
         #expect(try TradingDay(date: model.selectedDate).rawValue == "2025-02-03")
         #expect(model.result == nil)

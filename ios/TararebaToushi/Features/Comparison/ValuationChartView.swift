@@ -8,16 +8,26 @@ struct ValuationChartView: View {
     let result: SimulationResult
     @State private var selectedDate: Date?
     private let plotted: [[PlotPoint]]
+    private let principalPlot: [PlotPoint]
+    private let principal: Double
     private let upperBound: Double
 
     init(result: SimulationResult) {
         self.result = result
         let plotted = result.funds.map { Self.plot($0.points) }
-        let highest = plotted.flatMap { $0 }.map(\.value).max() ?? Double(result.input.amount)
+        let principal = NSDecimalNumber(decimal: result.principal).doubleValue
+        let highest = plotted.flatMap { $0 }.map(\.value).max() ?? principal
         self.plotted = plotted
+        self.principal = principal
+        principalPlot = Self.principalSteps(result).enumerated().map {
+            PlotPoint(
+                id: "principal-\($0.offset)", date: $0.element.day.date,
+                value: NSDecimalNumber(decimal: $0.element.amount).doubleValue)
+        }
         // Zero stays on the axis: the distance between the lines is the answer the screen
-        // gives, and a cropped baseline would enlarge it.
-        self.upperBound = max(1, highest * 1.12)
+        // gives, and a cropped baseline would enlarge it. Instalments can leave every fund
+        // below what was paid in, so the principal is kept in view as well.
+        self.upperBound = max(1, max(highest, principal) * 1.12)
     }
 
     private struct PlotPoint: Identifiable {
@@ -60,9 +70,10 @@ struct ValuationChartView: View {
     }
 
     private var chartDescription: String {
+        let plan = result.plan == .monthly ? "毎月積立の" : ""
         let subject = result.funds.count == 1
-            ? "\(result.funds[0].shortName)の評価額推移"
-            : "\(result.funds.count)商品の評価額推移"
+            ? "\(result.funds[0].shortName)の\(plan)評価額推移"
+            : "\(result.funds.count)商品の\(plan)評価額推移"
         let origin = result.isSample
             ? "実際の運用実績ではありません。" : "過去の基準価額から計算した値です。"
         return "\(subject)。\(origin)下の前後ボタンで観測日を選ぶと、その日の評価額を確認できます。"
@@ -87,9 +98,21 @@ struct ValuationChartView: View {
 
     private var chart: some View {
         Chart {
-            RuleMark(y: .value("元本", result.input.amount))
-                .foregroundStyle(Color.secondary.opacity(0.65))
-                .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+            if principalPlot.isEmpty {
+                RuleMark(y: .value("元本", principal))
+                    .foregroundStyle(Color.secondary.opacity(0.65))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+            } else {
+                ForEach(principalPlot) { point in
+                    LineMark(
+                        x: .value("日付", point.date),
+                        y: .value("元本", point.value),
+                        series: .value("商品", "元本")
+                    )
+                    .foregroundStyle(Color.secondary.opacity(0.65))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                }
+            }
             // Colour alone separates the series: eight hues stay tellable apart, eight
             // dash patterns do not.
             ForEach(Array(result.funds.enumerated()), id: \.element.id) { index, fund in
@@ -182,8 +205,9 @@ struct ValuationChartView: View {
                     )
                     .accessibilityIdentifier("chart-value-\(fund.id)")
                 }
-                row(color: .secondary, dashed: true, name: "元本", amount: Decimal(result.input.amount))
+                row(color: .secondary, dashed: true, name: "元本", amount: result.principal(on: days[selectedIndex].day))
                     .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("chart-principal")
             }
             .padding(12)
             .background(Color(uiColor: .tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14))
@@ -230,6 +254,25 @@ struct ValuationChartView: View {
             .frame(width: width, height: 3)
             .accessibilityHidden(true)
         }
+    }
+
+    // Instalments raise the principal on their purchase days only, so it rises straight up
+    // there instead of sloping between them. Empty when it never changes; a rule shows that.
+    static func principalSteps(_ result: SimulationResult) -> [ValuationPoint] {
+        let instalment = Decimal(result.input.amount)
+        var steps: [ValuationPoint] = []
+        for day in result.purchaseDays {
+            let paid = (steps.last?.amount ?? 0) + instalment
+            if let previous = steps.last, previous.day == day {
+                steps[steps.count - 1] = ValuationPoint(day: day, amount: paid)
+                continue
+            }
+            if let previous = steps.last { steps.append(ValuationPoint(day: day, amount: previous.amount)) }
+            steps.append(ValuationPoint(day: day, amount: paid))
+        }
+        guard steps.count > 1, let last = steps.last else { return [] }
+        if last.day < result.endDate { steps.append(ValuationPoint(day: result.endDate, amount: last.amount)) }
+        return steps
     }
 
     // Eight full histories run past ten thousand points and Swift Charts turns sluggish

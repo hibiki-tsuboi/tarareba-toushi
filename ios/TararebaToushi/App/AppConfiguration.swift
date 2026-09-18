@@ -30,6 +30,7 @@ nonisolated struct AppConfiguration: Sendable {
     static let maximumComparisonFunds = 8
     static let defaultComparisonFunds = 2
     static let initialAmount = 1_000_000
+    static let initialMonthlyAmount = 30_000
     static let initialDate = "2025-01-01"
     static let maximumResponseBytes = 2 * 1024 * 1024
 

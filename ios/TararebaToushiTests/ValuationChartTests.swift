@@ -38,4 +38,28 @@ import Testing
         let recorded = Dictionary(uniqueKeysWithValues: points.map { ($0.day, $0.amount) })
         #expect(drawn.allSatisfy { recorded[$0.day] == $0.amount })
     }
+
+    @Test func thePrincipalRisesStraightUpOnPurchaseDaysOnly() throws {
+        let dates = ["2025-01-06", "2025-01-20", "2025-02-06", "2025-03-06", "2025-03-10"]
+        let dataset = try Fixtures.dataset([
+            (id: "fund-a", dates: dates, values: ["10000", "11000", "5000", "20000", "12000"])
+        ])
+        let monthly = try SimulationCalculator.calculate(
+            .init(amount: 10_000, requestedDate: "2025-01-06", plan: .monthly), dataset: dataset)
+        let steps = ValuationChartView.principalSteps(monthly)
+        // Every rise shares its date with the level before it, and the last level runs to the end.
+        #expect(steps.map(\.day.rawValue)
+            == ["2025-01-06", "2025-02-06", "2025-02-06", "2025-03-06", "2025-03-06", "2025-03-10"])
+        #expect(steps.map(\.amount) == [10_000, 10_000, 20_000, 20_000, 30_000, 30_000])
+
+        // Instalments that land on one day make a single rise.
+        let together = try SimulationCalculator.calculate(
+            .init(amount: 30_000, requestedDate: "2025-01-01", plan: .monthly), dataset: Fixtures.validated())
+        #expect(ValuationChartView.principalSteps(together).map(\.amount) == [30_000, 30_000, 630_000])
+
+        // A principal that never changes is drawn as a rule instead.
+        let lumpSum = try SimulationCalculator.calculate(
+            .init(amount: 10_000, requestedDate: "2025-01-06"), dataset: dataset)
+        #expect(ValuationChartView.principalSteps(lumpSum).isEmpty)
+    }
 }

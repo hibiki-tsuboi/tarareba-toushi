@@ -73,13 +73,23 @@ struct DataInformationView: View {
                     Text("データ基準日は、2商品の観測値が揃う最後の日です。今日のリアルタイム価格やファイルの公開日時ではありません。")
                 }
                 Section("計算のしかた") {
-                    Text(isSample
+                    row(InvestmentPlan.lumpSum.label, isSample
                         ? "評価額 ＝ 元本 × 終了日の系列値 ÷ 開始日の系列値\n損益 ＝ 評価額 − 元本\n損益率 ＝（終了値 ÷ 開始値 − 1）× 100"
                         : "評価額 ＝ 元本 × 終了日の基準価額 ÷ 開始日の基準価額\n損益 ＝ 評価額 − 元本\n損益率 ＝（終了日の基準価額 ÷ 開始日の基準価額 − 1）× 100")
-                    Text("入力金額をそれぞれの商品に全額投資した場合を比較します。2商品への分割投資ではありません。指定日以降で両方のデータが揃う最初の日から、最後の共通日までで計算します。履歴開始前の期間は計算できません。")
+                    row(InvestmentPlan.monthly.label, isSample
+                        ? "評価額 ＝ 各回の「積立額 × 終了日の系列値 ÷ 購入日の系列値」の合計\n元本 ＝ 積立額 × 購入回数\n損益 ＝ 評価額 − 元本\n損益率 ＝（評価額 ÷ 元本 − 1）× 100"
+                        : "評価額 ＝ 各回の「積立額 × 終了日の基準価額 ÷ 購入日の基準価額」の合計\n元本 ＝ 積立額 × 購入回数\n損益 ＝ 評価額 − 元本\n損益率 ＝（評価額 ÷ 元本 − 1）× 100")
+                    Text("入力金額をそれぞれの商品に投資した場合を比較します。金額を商品に分けて投資する計算ではありません。指定日以降で選んだ商品すべてのデータが揃う最初の日から、最後の共通日までで計算します。履歴開始前の期間は計算できません。")
+                    Text("毎月積立では、開始日と同じ日付に毎月購入します。その月にない日付（31日など）は月末日とし、データのない日（休場日など）はその後の最初の共通日に購入します。最後の共通日より後の回は含めません。")
                     if let result {
                         row("比較する投資信託", result.funds.map(\.descriptor.displayName).joined(separator: "\n"))
-                        row("それぞれの投資金額", MoneyFormat.yen(Decimal(result.input.amount)))
+                        row("投資のしかた", result.plan.label)
+                        if result.plan == .monthly {
+                            row("毎月の積立額", MoneyFormat.yen(Decimal(result.input.amount)))
+                            row("購入回数と元本", "\(result.purchaseDays.count)回・\(MoneyFormat.yen(result.principal))")
+                        } else {
+                            row("それぞれの投資金額", MoneyFormat.yen(Decimal(result.input.amount)))
+                        }
                         row("指定した日", result.requestedDate.label)
                         row("算出基準日", result.endDate.label)
                         row("計算に使用した日", "\(result.startDate.label)〜\(result.endDate.label)")

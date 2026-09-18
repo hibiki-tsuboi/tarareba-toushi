@@ -96,6 +96,19 @@ struct ContentView: View {
                 Divider()
             }
             VStack(alignment: .leading, spacing: 10) {
+                Text("投資のしかた")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.secondary)
+                Picker("投資のしかた", selection: planSelection) {
+                    ForEach(InvestmentPlan.allCases, id: \.self) { plan in
+                        Text(plan.label).tag(plan)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .accessibilityIdentifier("investment-plan")
+            }
+            Divider()
+            VStack(alignment: .leading, spacing: 10) {
                 Text("開始日")
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(.secondary)
@@ -104,32 +117,51 @@ struct ContentView: View {
                     .labelsHidden()
                     .accessibilityLabel("開始日")
                     .accessibilityIdentifier("investment-date")
+                if model.plan == .monthly {
+                    Text("毎月この日付に購入します。データのない日は、その後の最初の観測日に購入します。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             Divider()
             VStack(alignment: .leading, spacing: 10) {
-                Text("投資金額")
+                Text(amountTitle)
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(.secondary)
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    TextField("1,000,000", text: $model.amountText)
+                    TextField(model.plan == .monthly ? "30,000" : "1,000,000", text: $model.amountText)
                         .font(.system(.largeTitle, design: .rounded, weight: .semibold))
                         .monospacedDigit()
                         .minimumScaleFactor(0.4)
                         .keyboardType(.numberPad)
                         .focused($amountFocused)
-                        .accessibilityLabel("投資金額")
+                        .accessibilityLabel(amountTitle)
                         .accessibilityIdentifier("investment-amount")
                     Text("円")
                         .font(.title3)
                         .foregroundStyle(.secondary)
                 }
-                Text("選んだ商品それぞれに、同じ金額を投資した場合を比較します。")
+                Text(model.plan == .monthly
+                    ? "選んだ商品それぞれに、毎月同じ金額を積み立てた場合を比較します。"
+                    : "選んだ商品それぞれに、同じ金額を投資した場合を比較します。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
         .cardSurface()
+    }
+
+    private var amountTitle: String { model.plan == .monthly ? "毎月の積立額" : "投資金額" }
+
+    private var planSelection: Binding<InvestmentPlan> {
+        Binding(
+            get: { model.plan },
+            set: { plan in
+                amountFocused = false
+                model.select(plan)
+            })
     }
 
     private var simulateTitle: String {

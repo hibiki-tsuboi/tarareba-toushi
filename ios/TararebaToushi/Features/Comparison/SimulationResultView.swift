@@ -8,6 +8,12 @@ struct SimulationResultView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
+    private var headline: String {
+        let amount = MoneyFormat.yen(Decimal(result.input.amount))
+        let each = result.funds.count == 1 ? "" : "それぞれに"
+        return result.plan == .monthly ? "\(each)毎月\(amount)を積み立てていたら" : "\(each)\(amount)を投資していたら"
+    }
+
     private var resultsLayout: AnyLayout {
         horizontalSizeClass == .regular && !dynamicTypeSize.isAccessibilitySize
             ? AnyLayout(HStackLayout(alignment: .top, spacing: 16))
@@ -18,14 +24,18 @@ struct SimulationResultView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(result.funds.count == 1
-                        ? "\(MoneyFormat.yen(Decimal(result.input.amount)))を投資していたら"
-                        : "それぞれに\(MoneyFormat.yen(Decimal(result.input.amount)))を投資していたら")
+                    Text(headline)
                         .font(.title3.bold())
                         .accessibilityAddTraits(.isHeader)
                     Text("\(result.startDate.label) 〜 \(result.endDate.label)")
                         .font(.subheadline.monospacedDigit())
                         .foregroundStyle(.secondary)
+                    if result.plan == .monthly {
+                        Text("積立\(result.purchaseDays.count)回・元本\(MoneyFormat.yen(result.principal))")
+                            .font(.subheadline.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                            .accessibilityIdentifier("principal-summary")
+                    }
                 }
                 resultsLayout {
                     ForEach(Array(result.funds.enumerated()), id: \.element.id) { index, fund in

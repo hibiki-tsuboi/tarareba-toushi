@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-「たられば投資」＝複数の投資信託に同額を一括投資していた場合を比較するiOSアプリと、その価格データを配信するCloudflare Workersの2つで構成されたリポジトリです。現在の配信商品はオルカン・S&P500・TOPIX・NASDAQ100・日経平均・純金・新興国株・ナノテク・遺伝子工学・先進国債券の10本で、同時比較は8商品まで・既定は先頭2商品です。ドキュメント・コミットメッセージ・UI文言・エラーメッセージはすべて日本語で書きます。
+「たられば投資」＝複数の投資信託に同額を一括投資、または毎月積立していた場合を比較するiOSアプリと、その価格データを配信するCloudflare Workersの2つで構成されたリポジトリです。現在の配信商品はオルカン・S&P500・TOPIX・NASDAQ100・日経平均・純金・新興国株・ナノテク・遺伝子工学・先進国債券の10本で、同時比較は8商品まで・既定は先頭2商品です。ドキュメント・コミットメッセージ・UI文言・エラーメッセージはすべて日本語で書きます。
 
 ## 構成
 
@@ -110,7 +110,7 @@ npm run dev                 # wrangler dev（public/ をローカル配信して
 - `Data/RemoteDataSource.swift` — 一覧を取得し、`contentVersion` が変わった商品の履歴だけダウンロード。一覧と履歴が食い違えば一覧から**1回だけ**再取得し、揃わなければ既存を保持します。
 - `Data/LocalSnapshotStore.swift` — Application Support配下に検証済みの単一スナップショットをatomic書き込み。バックアップ対象から除外。`origin == .bundled` の旧開発版キャッシュは採用しません。
 - `Domain/TradingDay.swift` — グレゴリオ暦・Asia/Tokyo固定の暦日。端末のカレンダー・タイムゾーンに依存しません。
-- `Domain/SimulationCalculator.swift` — 内部はすべて`Decimal`。評価額を1円へ四捨五入してから表示損益・差額を求めます（丸め後の値どうしで計算）。`Double`はグラフ描画時のみ。計算対象は `SimulationInput.fundIDs` の選択商品だけで、結果は配信順（オルカン→S&P500）に並べます。
+- `Domain/SimulationCalculator.swift` — 内部はすべて`Decimal`。評価額を1円へ四捨五入してから表示損益・差額を求めます（丸め後の値どうしで計算）。`Double`はグラフ描画時のみ。計算対象は `SimulationInput.fundIDs` の選択商品だけで、結果は配信順（オルカン→S&P500）に並べます。`SimulationInput.plan`（`lumpSum` / `monthly`、未保存の旧入力は一括）で購入日が決まり、`ComparisonDateResolver.purchaseDays` が毎月の購入日を共通観測日から選びます。評価額は直近の購入日から「掛けてから割る」順で繰り越すので、一括投資は従来の `元本 × 値 ÷ 開始値` と同じ結果です。割ってから掛ける形（口数の累積）に変えると、ちょうど0.5円の評価額が丸め誤差で1円ずれます。
 - `Models/Dataset.swift` — `ValidatedDataset.window(for:)` が**選択商品だけの共通観測日**を返します。全商品の積集合は取りません（履歴の短い商品を1つ足しただけで、無関係な商品の比較期間まで縮むため）。同時比較は `AppConfiguration.maximumComparisonFunds`（8商品）まで、既定は先頭2商品。**配信商品数と同時比較の上限は別**で、10本を配信して同時比較は8本までにしています。系列色は選択順の添字で引くので、必要な色数は商品数ではなく上限と同じ8色です。上限を上げるときだけ `AppPalette.seriesColors` を足します。
 
 ### iOSのコードの前提
@@ -118,7 +118,7 @@ npm run dev                 # wrangler dev（public/ をローカル配信して
 - ビルド設定は `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` ＋ `SWIFT_APPROACHABLE_CONCURRENCY = YES`（Swift 5言語モード）。**既定でMainActor隔離**なので、`DatasetMode` / `AppConfiguration` / `FixtureURLProtocol` のようにアクターを跨ぐ型にだけ明示的に `nonisolated` を付けます。
 - 単体テストはSwift Testing（`@Test` / `#expect`）、UIテストはXCTest。フィクスチャは各テストターゲットの `TestFixtures.swift` / `UITestFixtures.swift` に集約します。
 - テスト用の分岐（`--ui-testing` と `TARAREBA_TEST_*`）はすべて `#if DEBUG` の中にあり、Releaseビルドには入りません。UIテストは `TARAREBA_TEST_SESSION` ごとに `UserDefaults(suiteName:)` と保存先を分けるので、テスト間で入力値やキャッシュが混ざりません。
-- `accessibilityIdentifier` はUIテストとの契約です（`simulate` / `refresh-data` / `data-info` / `edit-input` / `input-error` / `comparison-difference` など）。評価額と損益、グラフの読み取り行は `valuation-<商品ID>` / `profit-<商品ID>` / `chart-value-<商品ID>` と商品IDから組み立てるため、商品IDを変えるとUIテストの参照先も変わります。
+- `accessibilityIdentifier` はUIテストとの契約です（`simulate` / `refresh-data` / `data-info` / `edit-input` / `input-error` / `comparison-difference` / `investment-plan` / `principal-summary` / `chart-principal` など）。評価額と損益、グラフの読み取り行は `valuation-<商品ID>` / `profit-<商品ID>` / `chart-value-<商品ID>` と商品IDから組み立てるため、商品IDを変えるとUIテストの参照先も変わります。
 - コーディングスタイル（4スペース、型名とファイル名の一致、View型の `View` 接尾辞、MainActor前提）は `AGENTS.md` の該当節が現行の指針です。SwiftLint / SwiftFormatの設定はありません。
 
 ## 変更時に守ること

@@ -121,6 +121,54 @@ final class ComparisonUITests: XCTestCase {
         capture(app, name: "three-fund-results")
     }
 
+    @MainActor func testMonthlyPlanShowsInstalmentsAndKeepsEachPlansAmount() {
+        let app = UITestFixtures.app(mode: "live")
+        app.launch()
+        waitForSimulation(app)
+        let plan = app.segmentedControls["investment-plan"]
+        reveal(plan, in: app)
+        XCTAssertTrue(plan.buttons["一括投資"].isSelected)
+        plan.buttons["毎月積立"].tap()
+        XCTAssertTrue(plan.buttons["毎月積立"].isSelected)
+        XCTAssertEqual(app.textFields["investment-amount"].value as? String, "30,000")
+        capture(app, name: "monthly-input")
+
+        simulate(app)
+        let allCountry = app.staticTexts["valuation-all-country"]
+        XCTAssertTrue(allCountry.waitForExistence(timeout: 5))
+        // From 2025-01-01: one instalment on 01-06, seven wait for 08-13 and thirteen for 2026-09-03.
+        XCTAssertEqual(app.staticTexts["principal-summary"].label, "積立21回・元本630,000円")
+        XCTAssertEqual(allCountry.label, "597,277円")
+        XCTAssertEqual(app.staticTexts["profit-all-country"].label, "−32,723円")
+        XCTAssertEqual(app.staticTexts["valuation-sp500"].label, "618,556円")
+        XCTAssertEqual(app.staticTexts["profit-sp500"].label, "−11,444円")
+        XCTAssertEqual(app.staticTexts["comparison-difference"].label, "21,279円")
+        capture(app, name: "monthly-results")
+
+        // The principal in the readout counts only what was paid in by the selected day.
+        reveal(app.staticTexts["chart-selected-day"], in: app)
+        XCTAssertTrue(chartPrincipal(app).label.contains("630,000円"))
+        tapVisible(app.buttons["前の観測日"], in: app)
+        XCTAssertEqual(app.staticTexts["chart-selected-day"].label, "2026/09/03")
+        XCTAssertTrue(chartRow(app, "sp500").label.contains("614,138円"))
+        tapVisible(app.buttons["前の観測日"], in: app)
+        XCTAssertEqual(app.staticTexts["chart-selected-day"].label, "2025/08/13")
+        XCTAssertTrue(chartPrincipal(app).label.contains("240,000円"))
+        XCTAssertTrue(chartRow(app, "all-country").label.contains("255,000円"))
+        capture(app, name: "monthly-chart")
+
+        // Each plan keeps its own amount, and the plan last simulated survives a relaunch.
+        tapVisible(app.buttons["edit-input"], in: app)
+        waitForSimulation(app)
+        tapVisible(plan.buttons["一括投資"], in: app)
+        XCTAssertEqual(app.textFields["investment-amount"].value as? String, "1,000,000")
+        app.terminate()
+        app.launch()
+        waitForSimulation(app)
+        XCTAssertTrue(plan.buttons["毎月積立"].isSelected)
+        XCTAssertEqual(app.textFields["investment-amount"].value as? String, "30,000")
+    }
+
     @MainActor func testBothFundsUseChangedAmountAndPreserveInput() {
         let app = UITestFixtures.app(mode: "live")
         app.launch()
@@ -363,6 +411,10 @@ final class ComparisonUITests: XCTestCase {
     // The readout rows combine their name and amount into one element.
     @MainActor private func chartRow(_ app: XCUIApplication, _ id: String) -> XCUIElement {
         app.descendants(matching: .any).matching(identifier: "chart-value-\(id)").firstMatch
+    }
+
+    @MainActor private func chartPrincipal(_ app: XCUIApplication) -> XCUIElement {
+        app.descendants(matching: .any).matching(identifier: "chart-principal").firstMatch
     }
 
     @MainActor private func capture(_ app: XCUIApplication, name: String) {
