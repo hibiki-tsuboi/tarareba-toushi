@@ -30,6 +30,13 @@ struct SimulationResultView: View {
                     Text("\(result.startDate.label) 〜 \(result.endDate.label)")
                         .font(.subheadline.monospacedDigit())
                         .foregroundStyle(.secondary)
+                    if result.startDate != result.requestedDate {
+                        Text("\(result.requestedDate.label)は選んだ商品のデータがそろわない日のため、\(result.startDate.label)から計算しています。")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier("start-date-note")
+                    }
                     if result.plan == .monthly {
                         Text("積立\(result.purchaseDays.count)回・元本\(MoneyFormat.yen(result.principal))")
                             .font(.subheadline.monospacedDigit())
@@ -52,7 +59,7 @@ struct SimulationResultView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     if !result.isSample {
                         Text("三菱UFJアセットマネジメント公表データをもとに、たられば投資が独自に算出しています。")
-                        Text("算出基準日：\(result.endDate.label)")
+                        Text("算出基準日：\(result.endDate.label)（この日までのデータで計算しています）")
                     }
                     Text(result.isSample
                         ? "サンプルデータによる概算です。実際の運用実績ではありません。"

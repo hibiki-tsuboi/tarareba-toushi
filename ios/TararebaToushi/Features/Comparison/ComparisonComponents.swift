@@ -67,6 +67,11 @@ struct FundResultCardView: View {
                     .lineLimit(1)
                     .foregroundStyle(result.displayedProfit <= 0 ? Color.primary : AppPalette.series(index))
                     .accessibilityIdentifier("profit-\(result.id)")
+                Text(MoneyFormat.signed(result.returnPercent, digits: 1) + "%")
+                    .font(.subheadline.weight(.semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("return-\(result.id)")
             }
             VStack(alignment: .leading, spacing: 6) {
                 ViewThatFits(in: .horizontal) {

@@ -34,8 +34,8 @@ struct DataInformationView: View {
                 Section {
                     DataNoticeView(mode: repository.configuration.mode)
                     Text(isSample
-                        ? "比較する2商品はシミュレーションを試すための架空データです。実在する投資信託の基準価額や成績を再現していません。"
-                        : "eMAXIS Slim 全世界株式（オール・カントリー）と、eMAXIS Slim 米国株式（S&P500）を同じ条件で比較します。運用会社の公開データを本アプリ用に加工しています。株価指数そのものの値ではありません。")
+                        ? "比較する商品はシミュレーションを試すための架空データです。実在する投資信託の基準価額や成績を再現していません。"
+                        : "選んだ投資信託を同じ条件で比較します。三菱UFJアセットマネジメントが公表する基準価額を本アプリ用に加工した値で、株価指数そのものの値ではありません。")
                 }
                 if !isSample {
                     Section("公表値とシミュレーション結果") {
@@ -44,35 +44,8 @@ struct DataInformationView: View {
                         Text("三菱UFJアセットマネジメントが本アプリや算出内容を推奨・保証・公認するものではありません。")
                     }
                 }
-                Section("表示中のデータ") {
-                    row("データモード", repository.configuration.mode.label)
-                    row("読み込み元", repository.statusLabel)
-                    row("データ識別子", repository.dataset?.snapshot.manifest.datasetVersion ?? "—")
-                    row("データの最終観測日", repository.dataset?.latestDate.label ?? "—")
-                    row("端末での最終取得日時", timestamp(repository.fetchedAt, empty: "未取得"))
-                    row("更新確認成功日時", timestamp(repository.checkedAt, empty: "未確認"))
-                    if let dataset = repository.dataset {
-                        row("配信データの作成日時", dataset.snapshot.manifest.publishedAt)
-                        ForEach(dataset.funds, id: \.descriptor.id) { fund in
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text(fund.descriptor.displayName).fontWeight(.medium)
-                                Text("出所：\(fund.series.source.name)")
-                                Text(fund.series.source.note).foregroundStyle(.secondary)
-                                if let text = fund.series.source.url, let url = URL(string: text) {
-                                    Link("出典の商品ページ", destination: url)
-                                }
-                            }
-                            .font(.footnote)
-                        }
-                    }
-                }
-                Section("配信と更新") {
-                    Text(repository.configuration.dataBaseURL).font(.footnote).textSelection(.enabled)
-                    Text("初回起動時に比較データを取得します。初回はインターネット接続が必要です。取得後は端末に保存し、オフラインでも前回のデータで比較できます。")
-                    Text("起動・復帰時に、前回の確認成功から6時間以上経過していれば更新を確認します。旧形式の価格データを保存している場合は6時間を待たずに確認します。手動更新もできます。通信に失敗した場合は正常な保存データを保持します。")
-                    Text("データ基準日は、2商品の観測値が揃う最後の日です。今日のリアルタイム価格やファイルの公開日時ではありません。")
-                }
                 Section("計算のしかた") {
+                    Text("結果の画面では、評価額を「投資後の金額」、損益を「増減額」と表示しています。")
                     row(InvestmentPlan.lumpSum.label, isSample
                         ? "評価額 ＝ 元本 × 終了日の系列値 ÷ 開始日の系列値\n損益 ＝ 評価額 − 元本\n損益率 ＝（終了値 ÷ 開始値 − 1）× 100"
                         : "評価額 ＝ 元本 × 終了日の基準価額 ÷ 開始日の基準価額\n損益 ＝ 評価額 − 元本\n損益率 ＝（終了日の基準価額 ÷ 開始日の基準価額 − 1）× 100")
@@ -84,8 +57,8 @@ struct DataInformationView: View {
                         : "一括の評価額 ＝ 積立の元本 × 終了日の基準価額 ÷ 開始日の基準価額\n差 ＝ 一括の表示評価額 − 積立の表示評価額")
                     row("いちばん沈んだとき", "その日の損益 ＝ その日の表示評価額 − その日までの元本\nその日の損益が最も小さかった日と、その額（同じ額なら早い日）")
                     Text("期間中に一度も元本を下回らなかった場合は「元本割れなし」と表示します。毎月積立の元本はその日までに購入した回の合計で、一括との比較では一括側についても同じ方法で求めます。")
-                    Text("入力金額をそれぞれの商品に投資した場合を比較します。金額を商品に分けて投資する計算ではありません。指定日以降で選んだ商品すべてのデータが揃う最初の日から、最後の共通日までで計算します。履歴開始前の期間は計算できません。")
-                    Text("毎月積立では、開始日と同じ日付に毎月購入します。その月にない日付（31日など）は月末日とし、データのない日（休場日など）はその後の最初の共通日に購入します。最後の共通日より後の回は含めません。")
+                    Text("入力金額をそれぞれの商品に投資した場合を比較します。金額を商品に分けて投資する計算ではありません。指定日以降で選んだ商品すべてのデータが揃う最初の日から、データが揃う最後の日までで計算します。履歴開始前の期間は計算できません。")
+                    Text("毎月積立では、開始日と同じ日付に毎月購入します。その月にない日付（31日など）は月末日とし、データのない日（休場日など）はその後の最初のデータが揃う日に購入します。データが揃う最後の日より後の回は含めません。")
                     Text("毎月積立の結果には、同じ元本を開始日にまとめて投資した場合も並べます。元本の全額を開始日に用意できたと仮定した比較で、購入が開始日だけの場合は同じ結果になるため表示しません。")
                     if let result {
                         row("比較する投資信託", result.funds.map(\.descriptor.displayName).joined(separator: "\n"))
@@ -112,6 +85,34 @@ struct DataInformationView: View {
                         Text("「オルカン」は三菱UFJアセットマネジメントの登録商標です。")
                     }
                     Text("過去の比較結果は将来の成果を保証しません。特定の商品の購入・売却を推奨するものではありません。")
+                }
+                Section("表示中のデータ") {
+                    row("データモード", repository.configuration.mode.label)
+                    row("読み込み元", repository.statusLabel)
+                    row("データ識別子", repository.dataset?.snapshot.manifest.datasetVersion ?? "—")
+                    row("データの最終日", repository.dataset?.latestDate.label ?? "—")
+                    row("端末での最終取得日時", timestamp(repository.fetchedAt, empty: "未取得"))
+                    row("更新確認成功日時", timestamp(repository.checkedAt, empty: "未確認"))
+                    if let dataset = repository.dataset {
+                        row("配信データの作成日時", dataset.snapshot.manifest.publishedAt)
+                        ForEach(dataset.funds, id: \.descriptor.id) { fund in
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(fund.descriptor.displayName).fontWeight(.medium)
+                                Text("出所：\(fund.series.source.name)")
+                                Text(fund.series.source.note).foregroundStyle(.secondary)
+                                if let text = fund.series.source.url, let url = URL(string: text) {
+                                    Link("出典の商品ページ", destination: url)
+                                }
+                            }
+                            .font(.footnote)
+                        }
+                    }
+                }
+                Section("配信と更新") {
+                    Text(repository.configuration.dataBaseURL).font(.footnote).textSelection(.enabled)
+                    Text("初回起動時に比較データを取得します。初回はインターネット接続が必要です。取得後は端末に保存し、オフラインでも前回のデータで比較できます。")
+                    Text("起動・復帰時に、前回の確認成功から6時間以上経過していれば更新を確認します。旧形式の価格データを保存している場合は6時間を待たずに確認します。手動更新もできます。通信に失敗した場合は正常な保存データを保持します。")
+                    Text("データの最終日は、配信データに入っている最後の日です。今日のリアルタイム価格やファイルの公開日時ではありません。")
                 }
             }
             .font(.subheadline)

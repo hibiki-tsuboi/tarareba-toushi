@@ -28,9 +28,14 @@ final class ComparisonUITests: XCTestCase {
         simulate(app)
         XCTAssertTrue(app.staticTexts["profit-all-country"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.staticTexts["profit-all-country"].label, "＋200,000円")
+        XCTAssertEqual(app.staticTexts["return-all-country"].label, "＋20.0%")
         XCTAssertEqual(app.staticTexts["valuation-all-country"].label, "1,200,000円")
         XCTAssertEqual(app.staticTexts["profit-sp500"].label, "＋400,000円")
+        XCTAssertEqual(app.staticTexts["return-sp500"].label, "＋40.0%")
         XCTAssertEqual(app.staticTexts["valuation-sp500"].label, "1,400,000円")
+        // 2025-01-01 has no prices, so the comparison says where it really started.
+        XCTAssertEqual(app.staticTexts["start-date-note"].label,
+            "2025/01/01は選んだ商品のデータがそろわない日のため、2025/01/06から計算しています。")
         XCTAssertFalse(app.textFields["investment-amount"].exists)
         XCTAssertFalse(app.datePickers["investment-date"].exists)
         XCTAssertFalse(app.buttons["simulate"].exists)
@@ -57,7 +62,7 @@ final class ComparisonUITests: XCTestCase {
         XCTAssertTrue(chartRow(app, "sp500").label.contains("1,400,000円"))
         capture(app, name: "comparison-chart")
         // Stepping back moves the readout to that day without touching the cards.
-        tapVisible(app.buttons["前の観測日"], in: app)
+        tapVisible(app.buttons["前の日"], in: app)
         XCTAssertEqual(app.staticTexts["chart-selected-day"].label, "2026/09/03")
         XCTAssertTrue(chartRow(app, "all-country").label.contains("1,190,000円"))
         XCTAssertTrue(chartRow(app, "sp500").label.contains("1,390,000円"))
@@ -160,8 +165,10 @@ final class ComparisonUITests: XCTestCase {
         XCTAssertEqual(app.staticTexts["principal-summary"].label, "積立21回・元本630,000円")
         XCTAssertEqual(allCountry.label, "597,277円")
         XCTAssertEqual(app.staticTexts["profit-all-country"].label, "−32,723円")
+        XCTAssertEqual(app.staticTexts["return-all-country"].label, "−5.2%")
         XCTAssertEqual(app.staticTexts["valuation-sp500"].label, "618,556円")
         XCTAssertEqual(app.staticTexts["profit-sp500"].label, "−11,444円")
+        XCTAssertEqual(app.staticTexts["return-sp500"].label, "−1.8%")
         XCTAssertEqual(app.staticTexts["comparison-difference"].label, "21,279円")
         // Thirteen instalments bought on 2026-09-03 at the top, then the prices eased.
         XCTAssertEqual(app.staticTexts["deepest-loss-all-country"].label, "−37,700円（2026/09/03）")
@@ -185,10 +192,10 @@ final class ComparisonUITests: XCTestCase {
         // The principal in the readout counts only what was paid in by the selected day.
         reveal(app.staticTexts["chart-selected-day"], in: app)
         XCTAssertTrue(chartPrincipal(app).label.contains("630,000円"))
-        tapVisible(app.buttons["前の観測日"], in: app)
+        tapVisible(app.buttons["前の日"], in: app)
         XCTAssertEqual(app.staticTexts["chart-selected-day"].label, "2026/09/03")
         XCTAssertTrue(chartRow(app, "sp500").label.contains("614,138円"))
-        tapVisible(app.buttons["前の観測日"], in: app)
+        tapVisible(app.buttons["前の日"], in: app)
         XCTAssertEqual(app.staticTexts["chart-selected-day"].label, "2025/08/13")
         XCTAssertTrue(chartPrincipal(app).label.contains("240,000円"))
         XCTAssertTrue(chartRow(app, "all-country").label.contains("255,000円"))
@@ -281,9 +288,9 @@ final class ComparisonUITests: XCTestCase {
         XCTAssertEqual(app.staticTexts["comparison-difference"].label, "0円")
         XCTAssertEqual(app.staticTexts["comparison-summary"].label, "表示上の差額は0円。同じ結果でした。")
         // A single common day leaves nothing to step to on either side.
-        XCTAssertTrue(app.buttons["前の観測日"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["前の観測日"].isEnabled)
-        XCTAssertFalse(app.buttons["次の観測日"].isEnabled)
+        XCTAssertTrue(app.buttons["前の日"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["前の日"].isEnabled)
+        XCTAssertFalse(app.buttons["次の日"].isEnabled)
         app.buttons["data-info"].tap()
         let refresh = app.buttons["refresh-data"]
         XCTAssertTrue(refresh.waitForExistence(timeout: 5))
@@ -335,9 +342,13 @@ final class ComparisonUITests: XCTestCase {
         simulate(app)
         XCTAssertTrue(app.staticTexts["profit-demo-all-country"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.staticTexts["profit-demo-all-country"].label, "−200,000円")
+        XCTAssertEqual(app.staticTexts["return-demo-all-country"].label, "−20.0%")
         XCTAssertEqual(app.staticTexts["valuation-demo-all-country"].label, "800,000円")
         XCTAssertEqual(app.staticTexts["profit-demo-sp500"].label, "−125,000円")
+        XCTAssertEqual(app.staticTexts["return-demo-sp500"].label, "−12.5%")
         XCTAssertEqual(app.staticTexts["valuation-demo-sp500"].label, "875,000円")
+        // 2025-08-13 is a day with prices, so nothing had to move.
+        XCTAssertFalse(app.staticTexts["start-date-note"].exists)
         XCTAssertEqual(app.staticTexts["comparison-difference"].label, "75,000円")
         // The day before the end sat lower than the end: 11,900 ÷ 15,000 of a million.
         XCTAssertEqual(app.staticTexts["deepest-loss-demo-all-country"].label, "−206,667円（2026/09/03）")

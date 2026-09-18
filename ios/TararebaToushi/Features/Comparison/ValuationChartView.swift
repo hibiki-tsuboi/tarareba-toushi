@@ -76,7 +76,7 @@ struct ValuationChartView: View {
             : "\(result.funds.count)商品の\(plan)評価額推移"
         let origin = result.isSample
             ? "実際の運用実績ではありません。" : "過去の基準価額から計算した値です。"
-        return "\(subject)。\(origin)下の前後ボタンで観測日を選ぶと、その日の評価額を確認できます。"
+        return "\(subject)。\(origin)下の前後ボタンで日を選ぶと、その日の評価額を確認できます。"
     }
 
     var body: some View {
@@ -88,7 +88,7 @@ struct ValuationChartView: View {
             }
             chart
             readout
-            Text("グラフをなぞると、その日の評価額を確認できます。共通の観測日のみを結んでいます。")
+            Text("グラフをなぞると、その日の評価額を確認できます。選んだ商品すべてにデータがある日だけを結んでいます。")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -189,11 +189,11 @@ struct ValuationChartView: View {
                         .font(.subheadline.monospacedDigit().bold())
                         .accessibilityIdentifier("chart-selected-day")
                     Spacer()
-                    Button("前の観測日", systemImage: "chevron.left") { select(index: selectedIndex - 1) }
+                    Button("前の日", systemImage: "chevron.left") { select(index: selectedIndex - 1) }
                         .labelStyle(.iconOnly)
                         .frame(minWidth: 44, minHeight: 44)
                         .disabled(selectedIndex == 0)
-                    Button("次の観測日", systemImage: "chevron.right") { select(index: selectedIndex + 1) }
+                    Button("次の日", systemImage: "chevron.right") { select(index: selectedIndex + 1) }
                         .labelStyle(.iconOnly)
                         .frame(minWidth: 44, minHeight: 44)
                         .disabled(selectedIndex == days.count - 1)
