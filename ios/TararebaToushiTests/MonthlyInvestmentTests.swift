@@ -17,17 +17,8 @@ import Testing
         return ComparisonDateResolver.purchaseDays(for: .monthly, from: requested, in: days).map(\.rawValue)
     }
 
-    // fund-a halves by February, doubles by March and ends 20% above its start; fund-b never moves.
-    private func dipAndRecovery() throws -> ValidatedDataset {
-        let dates = ["2025-01-06", "2025-01-20", "2025-02-06", "2025-03-06", "2025-03-10"]
-        return try Fixtures.dataset([
-            (id: "fund-a", dates: dates, values: ["10000", "11000", "5000", "20000", "12000"]),
-            (id: "fund-b", dates: dates, values: ["10000", "10000", "10000", "10000", "10000"]),
-        ])
-    }
-
     @Test func instalmentsBoughtLowEarnMoreThanTheFundsOwnChange() throws {
-        let dataset = try dipAndRecovery()
+        let dataset = try Fixtures.dipAndRecovery()
         let result = try monthly(10_000, from: "2025-01-06", in: dataset, funds: ["fund-a", "fund-b"])
         #expect(result.plan == .monthly)
         #expect(result.purchaseDays.map(\.rawValue) == ["2025-01-06", "2025-02-06", "2025-03-06"])
@@ -101,7 +92,7 @@ import Testing
     }
 
     @Test func theSamePrincipalPaidInAtOnceIsComparedFundByFund() throws {
-        let result = try monthly(10_000, from: "2025-01-06", in: dipAndRecovery(), funds: ["fund-a", "fund-b"])
+        let result = try monthly(10_000, from: "2025-01-06", in: Fixtures.dipAndRecovery(), funds: ["fund-a", "fund-b"])
         #expect(result.comparesWithLumpSum)
         // 30,000 paid in on 01-06 rides the 20% rise, but the February instalment bought at half price.
         #expect(result.funds.map(\.displayedLumpSumValuation) == [36_000, 30_000])

@@ -28,6 +28,7 @@ final class ComparisonUITests: XCTestCase {
         XCTAssertEqual(app.staticTexts["comparison-summary"].label, "この期間では、S&P500のほうが多い結果でした。")
         // A lump sum has no lump sum to be compared with.
         XCTAssertFalse(lumpSumRow(app, "all-country").exists)
+        XCTAssertEqual(app.staticTexts["deepest-loss-all-country"].label, "元本割れなし")
         let allCountryFrame = app.staticTexts["profit-all-country"].frame
         let sp500Frame = app.staticTexts["profit-sp500"].frame
         if app.frame.width > 600 {
@@ -145,6 +146,9 @@ final class ComparisonUITests: XCTestCase {
         XCTAssertEqual(app.staticTexts["valuation-sp500"].label, "618,556円")
         XCTAssertEqual(app.staticTexts["profit-sp500"].label, "−11,444円")
         XCTAssertEqual(app.staticTexts["comparison-difference"].label, "21,279円")
+        // Thirteen instalments bought on 2026-09-03 at the top, then the prices eased.
+        XCTAssertEqual(app.staticTexts["deepest-loss-all-country"].label, "−37,700円（2026/09/03）")
+        XCTAssertEqual(app.staticTexts["deepest-loss-sp500"].label, "−15,862円（2026/09/03）")
         capture(app, name: "monthly-results")
 
         // The same 630,000 yen paid in at once on 2025-01-06, fund by fund.
@@ -152,9 +156,13 @@ final class ComparisonUITests: XCTestCase {
         reveal(allCountryLumpSum, in: app)
         XCTAssertTrue(allCountryLumpSum.label.contains("756,000円"))
         XCTAssertTrue(allCountryLumpSum.label.contains("一括のほうが158,723円多い"))
+        // Paid in at 10,000, the lump sum never fell below it in this fixture.
+        XCTAssertTrue(allCountryLumpSum.label.contains("いちばん沈んだとき：元本割れなし"))
         XCTAssertTrue(lumpSumRow(app, "sp500").label.contains("882,000円"))
         XCTAssertTrue(lumpSumRow(app, "sp500").label.contains("一括のほうが263,444円多い"))
         XCTAssertEqual(app.staticTexts["lump-sum-summary"].label, "この期間は、2商品とも一括のほうが多い結果でした。")
+        // The summary closes the card, so bringing it up shows the whole card in the capture.
+        reveal(app.staticTexts["lump-sum-summary"], in: app)
         capture(app, name: "monthly-lump-sum")
 
         // The principal in the readout counts only what was paid in by the selected day.
@@ -311,6 +319,9 @@ final class ComparisonUITests: XCTestCase {
         XCTAssertEqual(app.staticTexts["profit-demo-sp500"].label, "−125,000円")
         XCTAssertEqual(app.staticTexts["valuation-demo-sp500"].label, "875,000円")
         XCTAssertEqual(app.staticTexts["comparison-difference"].label, "75,000円")
+        // The day before the end sat lower than the end: 11,900 ÷ 15,000 of a million.
+        XCTAssertEqual(app.staticTexts["deepest-loss-demo-all-country"].label, "−206,667円（2026/09/03）")
+        XCTAssertEqual(app.staticTexts["deepest-loss-demo-sp500"].label, "−131,250円（2026/09/03）")
         capture(app, name: "comparison-loss-results")
     }
 

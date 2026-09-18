@@ -74,6 +74,15 @@ nonisolated enum Fixtures {
             funds: validated, latestDate: latest)
     }
 
+    // fund-a halves by February, doubles by March and ends 20% above its start; fund-b never moves.
+    static func dipAndRecovery() throws -> ValidatedDataset {
+        let dates = ["2025-01-06", "2025-01-20", "2025-02-06", "2025-03-06", "2025-03-10"]
+        return try dataset([
+            (id: "fund-a", dates: dates, values: ["10000", "11000", "5000", "20000", "12000"]),
+            (id: "fund-b", dates: dates, values: ["10000", "10000", "10000", "10000", "10000"]),
+        ])
+    }
+
     // A full update is the catalog plus one history per delivered fund.
     static func requests(_ mode: DatasetMode = .sample) -> Int { mode.fundIDs.count + 1 }
 

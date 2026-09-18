@@ -68,9 +68,15 @@ struct FundResultCardView: View {
                     .foregroundStyle(result.displayedProfit <= 0 ? Color.primary : AppPalette.series(index))
                     .accessibilityIdentifier("profit-\(result.id)")
             }
-            ViewThatFits(in: .horizontal) {
-                HStack(alignment: .firstTextBaseline) { valuation }
-                VStack(alignment: .leading, spacing: 4) { valuation }
+            VStack(alignment: .leading, spacing: 6) {
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .firstTextBaseline) { valuation }
+                    VStack(alignment: .leading, spacing: 4) { valuation }
+                }
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .firstTextBaseline) { deepestLoss }
+                    VStack(alignment: .leading, spacing: 4) { deepestLoss }
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -86,6 +92,16 @@ struct FundResultCardView: View {
             .font(.subheadline.weight(.semibold))
             .monospacedDigit()
             .accessibilityIdentifier("valuation-\(result.id)")
+    }
+
+    @ViewBuilder private var deepestLoss: some View {
+        Text("いちばん沈んだとき")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        Text(result.deepestLoss?.label ?? "元本割れなし")
+            .font(.subheadline.weight(.semibold))
+            .monospacedDigit()
+            .accessibilityIdentifier("deepest-loss-\(result.id)")
     }
 }
 
@@ -225,6 +241,11 @@ struct LumpSumComparisonCardView: View {
                 .font(.subheadline.weight(.medium))
                 .monospacedDigit()
             Text(verdict(fund))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
+            // Beside the fund card's own figure, what paying everything in first had to sit through.
+            Text("いちばん沈んだとき：\(fund.lumpSumDeepestLoss?.label ?? "元本割れなし")")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .monospacedDigit()

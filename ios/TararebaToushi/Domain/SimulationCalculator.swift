@@ -28,6 +28,15 @@ nonisolated struct ValuationPoint: Identifiable, Sendable {
     let amount: Decimal
 }
 
+// The day a holding stood furthest below what had been paid in by then.
+nonisolated struct DeepestLoss: Equatable, Sendable {
+    let day: TradingDay
+    // Negative: that day's displayed valuation less the principal paid in by then.
+    let displayedAmount: Decimal
+
+    var label: String { "\(MoneyFormat.signed(displayedAmount))円（\(day.label)）" }
+}
+
 nonisolated struct FundResult: Identifiable, Sendable {
     var id: String { descriptor.id }
     let descriptor: FundDescriptor
@@ -40,6 +49,9 @@ nonisolated struct FundResult: Identifiable, Sendable {
     // The same principal paid in at once on the start day. For a lump sum, the valuation itself.
     let lumpSumValuation: Decimal
     let displayedLumpSumValuation: Decimal
+    // nil when the displayed valuation never fell below the principal paid in by then.
+    let deepestLoss: DeepestLoss?
+    let lumpSumDeepestLoss: DeepestLoss?
 
     var shortName: String { descriptor.shortName }
     // Positive when paying everything in on the start day would have ended ahead.
@@ -148,6 +160,16 @@ nonisolated enum SimulationCalculator {
             let rounded = MoneyFormat.round(last.amount)
             // The lump sum's own expression, so for a lump sum it is the valuation to the last digit.
             let lumpSum = principal * endValue / initial
+            let deepest = deepestLoss(of: points, buying: purchases, instalment: instalment)
+            var lumpSumDeepest = deepest
+            if plan == .monthly {
+                // The same principal paid in on the start day, priced every day as a lump sum is.
+                let lumpSumPoints = try dates.map { day in
+                    guard let value = fund.values[day] else { throw DataIssue("比較日の値が不正です。") }
+                    return ValuationPoint(day: day, amount: principal * value / initial)
+                }
+                lumpSumDeepest = deepestLoss(of: lumpSumPoints, buying: [start], instalment: principal)
+            }
             return FundResult(
                 descriptor: fund.descriptor, points: points, valuation: last.amount,
                 profit: last.amount - principal,
@@ -155,7 +177,8 @@ nonisolated enum SimulationCalculator {
                 returnPercent: plan == .lumpSum
                     ? (endValue / initial - 1) * 100 : (last.amount / principal - 1) * 100,
                 displayedValuation: rounded, displayedProfit: rounded - principal,
-                lumpSumValuation: lumpSum, displayedLumpSumValuation: MoneyFormat.round(lumpSum))
+                lumpSumValuation: lumpSum, displayedLumpSumValuation: MoneyFormat.round(lumpSum),
+                deepestLoss: deepest, lumpSumDeepestLoss: lumpSumDeepest)
         }
         return SimulationResult(
             isSample: dataset.snapshot.manifest.isSample,
@@ -163,6 +186,22 @@ nonisolated enum SimulationCalculator {
             purchaseDays: purchases, funds: results,
             displayedDifference: results.count == 2
                 ? results[1].displayedValuation - results[0].displayedValuation : 0)
+    }
+
+    // The day the displayed valuation stood furthest below the principal paid in by then,
+    // the earlier day on a tie, and nil when it never fell below. Displayed amounts are
+    // compared, as everywhere else, so a fraction of a yen below the principal is no loss.
+    private static func deepestLoss(
+        of points: [ValuationPoint], buying purchases: [TradingDay], instalment: Decimal
+    ) -> DeepestLoss? {
+        var deepest: DeepestLoss?
+        var bought = 0
+        for point in points {
+            while bought < purchases.count, purchases[bought] <= point.day { bought += 1 }
+            let loss = MoneyFormat.round(point.amount) - instalment * Decimal(bought)
+            if loss < (deepest?.displayedAmount ?? 0) { deepest = DeepestLoss(day: point.day, displayedAmount: loss) }
+        }
+        return deepest
     }
 }
 
