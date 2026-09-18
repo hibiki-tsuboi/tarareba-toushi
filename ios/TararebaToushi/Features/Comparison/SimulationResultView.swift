@@ -45,6 +45,9 @@ struct SimulationResultView: View {
                 if result.funds.count > 1 {
                     ComparisonSummaryCardView(result: result)
                 }
+                if result.comparesWithLumpSum {
+                    LumpSumComparisonCardView(result: result)
+                }
                 ValuationChartView(result: result)
                 VStack(alignment: .leading, spacing: 6) {
                     if !result.isSample {

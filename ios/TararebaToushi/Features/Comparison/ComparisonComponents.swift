@@ -150,3 +150,91 @@ struct ComparisonSummaryCardView: View {
             .accessibilityIdentifier("comparison-difference")
     }
 }
+
+// A monthly plan set against the same principal paid in at once on its start day.
+struct LumpSumComparisonCardView: View {
+    let result: SimulationResult
+
+    // Each row already answers for its own fund, so one fund needs no summary.
+    private var summary: String? {
+        guard result.funds.count > 1 else { return nil }
+        let advantages = result.funds.map(\.displayedLumpSumAdvantage)
+        let lumpSum = advantages.filter { $0 > 0 }.count
+        let monthly = advantages.filter { $0 < 0 }.count
+        let tied = advantages.count - lumpSum - monthly
+        let everyFund = advantages.count == 2 ? "2商品とも" : "すべての商品で"
+        if lumpSum == advantages.count { return "この期間は、\(everyFund)一括のほうが多い結果でした。" }
+        if monthly == advantages.count { return "この期間は、\(everyFund)積立のほうが多い結果でした。" }
+        if tied == advantages.count { return "この期間は、表示上すべて同じ金額でした。" }
+        let parts = [
+            lumpSum > 0 ? "一括のほうが多かったのは\(lumpSum)商品" : nil,
+            monthly > 0 ? "積立のほうが多かったのは\(monthly)商品" : nil,
+            tied > 0 ? "同じ金額だったのは\(tied)商品" : nil,
+        ]
+        return "この期間、" + parts.compactMap { $0 }.joined(separator: "、") + "でした。"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("一括で投資していたら")
+                    .font(.headline)
+                    .accessibilityAddTraits(.isHeader)
+                Text("同じ元本\(MoneyFormat.yen(result.principal))を、\(result.startDate.label)にまとめて投資した場合です。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(result.funds) { fund in
+                    ViewThatFits(in: .horizontal) {
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            name(fund)
+                            Spacer(minLength: 8)
+                            figures(fund, alignment: .trailing)
+                        }
+                        VStack(alignment: .leading, spacing: 4) {
+                            name(fund)
+                            figures(fund, alignment: .leading)
+                        }
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("lump-sum-\(fund.id)")
+                }
+            }
+            if let summary {
+                Text(summary)
+                    .font(.subheadline)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("lump-sum-summary")
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .cardSurface()
+    }
+
+    private func name(_ fund: FundResult) -> some View {
+        Text(fund.shortName)
+            .font(.subheadline)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func figures(_ fund: FundResult, alignment: HorizontalAlignment) -> some View {
+        VStack(alignment: alignment, spacing: 2) {
+            Text(MoneyFormat.yen(fund.displayedLumpSumValuation))
+                .font(.subheadline.weight(.medium))
+                .monospacedDigit()
+            Text(verdict(fund))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
+        }
+    }
+
+    private func verdict(_ fund: FundResult) -> String {
+        let advantage = fund.displayedLumpSumAdvantage
+        if advantage > 0 { return "一括のほうが\(MoneyFormat.yen(advantage))多い" }
+        if advantage < 0 { return "積立のほうが\(MoneyFormat.yen(-advantage))多い" }
+        return "同じ金額"
+    }
+}

@@ -17,12 +17,17 @@ import Testing
         return ComparisonDateResolver.purchaseDays(for: .monthly, from: requested, in: days).map(\.rawValue)
     }
 
-    @Test func instalmentsBoughtLowEarnMoreThanTheFundsOwnChange() throws {
+    // fund-a halves by February, doubles by March and ends 20% above its start; fund-b never moves.
+    private func dipAndRecovery() throws -> ValidatedDataset {
         let dates = ["2025-01-06", "2025-01-20", "2025-02-06", "2025-03-06", "2025-03-10"]
-        let dataset = try Fixtures.dataset([
+        return try Fixtures.dataset([
             (id: "fund-a", dates: dates, values: ["10000", "11000", "5000", "20000", "12000"]),
             (id: "fund-b", dates: dates, values: ["10000", "10000", "10000", "10000", "10000"]),
         ])
+    }
+
+    @Test func instalmentsBoughtLowEarnMoreThanTheFundsOwnChange() throws {
+        let dataset = try dipAndRecovery()
         let result = try monthly(10_000, from: "2025-01-06", in: dataset, funds: ["fund-a", "fund-b"])
         #expect(result.plan == .monthly)
         #expect(result.purchaseDays.map(\.rawValue) == ["2025-01-06", "2025-02-06", "2025-03-06"])
@@ -93,6 +98,38 @@ import Testing
         #expect(lumpSum.principal == 10_001)
         #expect(lumpSum.funds[0].points.prefix(3).map(\.amount) == result.funds[0].points.prefix(3).map(\.amount))
         #expect(lumpSum.funds[0].points.last?.amount == 10_001)
+    }
+
+    @Test func theSamePrincipalPaidInAtOnceIsComparedFundByFund() throws {
+        let result = try monthly(10_000, from: "2025-01-06", in: dipAndRecovery(), funds: ["fund-a", "fund-b"])
+        #expect(result.comparesWithLumpSum)
+        // 30,000 paid in on 01-06 rides the 20% rise, but the February instalment bought at half price.
+        #expect(result.funds.map(\.displayedLumpSumValuation) == [36_000, 30_000])
+        #expect(result.funds.map(\.displayedLumpSumAdvantage) == [-6_000, 0])
+
+        let rising = try monthly(30_000, from: "2025-01-01", in: Fixtures.validated())
+        #expect(rising.funds.map(\.displayedLumpSumValuation) == [756_000, 882_000])
+        #expect(rising.funds.map(\.displayedLumpSumAdvantage) == [120_000, 240_000])
+    }
+
+    @Test func instalmentsBoughtOnlyOnTheStartDayAreTheLumpSumAlready() throws {
+        let dataset = try Fixtures.validated()
+        let once = try monthly(30_000, from: "2026-09-04", in: dataset)
+        #expect(!once.comparesWithLumpSum)
+        #expect(once.funds.allSatisfy { $0.lumpSumValuation == $0.valuation })
+        // Two instalments waiting for the first common day are one purchase of both.
+        let waiting = try Fixtures.dataset([
+            (id: "fund-a", dates: ["2024-11-29", "2025-01-06"], values: ["10000", "12000"])
+        ])
+        let both = try monthly(30_000, from: "2024-12-01", in: waiting)
+        #expect(both.purchaseDays.map(\.rawValue) == ["2025-01-06", "2025-01-06"])
+        #expect(!both.comparesWithLumpSum)
+        #expect(both.funds[0].displayedLumpSumAdvantage == 0)
+        // A lump sum has nothing to compare with and is its own lump sum to the last digit.
+        let lumpSum = try SimulationCalculator.calculate(
+            .init(amount: 1_000_000, requestedDate: "2025-01-01"), dataset: dataset)
+        #expect(!lumpSum.comparesWithLumpSum)
+        #expect(lumpSum.funds.allSatisfy { $0.lumpSumValuation == $0.valuation })
     }
 
     @Test func eachPlanKeepsItsOwnAmountAndTheLastSimulatedPlanIsRestored() throws {

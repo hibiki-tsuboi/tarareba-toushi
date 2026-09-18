@@ -37,8 +37,13 @@ nonisolated struct FundResult: Identifiable, Sendable {
     let returnPercent: Decimal
     let displayedValuation: Decimal
     let displayedProfit: Decimal
+    // The same principal paid in at once on the start day. For a lump sum, the valuation itself.
+    let lumpSumValuation: Decimal
+    let displayedLumpSumValuation: Decimal
 
     var shortName: String { descriptor.shortName }
+    // Positive when paying everything in on the start day would have ended ahead.
+    var displayedLumpSumAdvantage: Decimal { displayedLumpSumValuation - displayedValuation }
 }
 
 nonisolated struct SimulationResult: Sendable {
@@ -55,6 +60,8 @@ nonisolated struct SimulationResult: Sendable {
 
     var plan: InvestmentPlan { input.plan ?? .lumpSum }
     var principal: Decimal { Decimal(input.amount) * Decimal(purchaseDays.count) }
+    // Instalments that were all bought on the start day are the lump sum already.
+    var comparesWithLumpSum: Bool { plan == .monthly && purchaseDays.last != startDate }
 
     // Everything paid in up to and including that day.
     func principal(on day: TradingDay) -> Decimal {
@@ -139,13 +146,16 @@ nonisolated enum SimulationCalculator {
                 throw DataIssue("評価額を計算できませんでした。")
             }
             let rounded = MoneyFormat.round(last.amount)
+            // The lump sum's own expression, so for a lump sum it is the valuation to the last digit.
+            let lumpSum = principal * endValue / initial
             return FundResult(
                 descriptor: fund.descriptor, points: points, valuation: last.amount,
                 profit: last.amount - principal,
                 // Instalments bought at later prices do not earn the fund's own change.
                 returnPercent: plan == .lumpSum
                     ? (endValue / initial - 1) * 100 : (last.amount / principal - 1) * 100,
-                displayedValuation: rounded, displayedProfit: rounded - principal)
+                displayedValuation: rounded, displayedProfit: rounded - principal,
+                lumpSumValuation: lumpSum, displayedLumpSumValuation: MoneyFormat.round(lumpSum))
         }
         return SimulationResult(
             isSample: dataset.snapshot.manifest.isSample,

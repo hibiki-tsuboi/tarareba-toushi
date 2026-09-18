@@ -26,6 +26,8 @@ final class ComparisonUITests: XCTestCase {
         XCTAssertFalse(app.buttons["simulate"].exists)
         XCTAssertEqual(app.staticTexts["comparison-difference"].label, "200,000円")
         XCTAssertEqual(app.staticTexts["comparison-summary"].label, "この期間では、S&P500のほうが多い結果でした。")
+        // A lump sum has no lump sum to be compared with.
+        XCTAssertFalse(lumpSumRow(app, "all-country").exists)
         let allCountryFrame = app.staticTexts["profit-all-country"].frame
         let sp500Frame = app.staticTexts["profit-sp500"].frame
         if app.frame.width > 600 {
@@ -144,6 +146,16 @@ final class ComparisonUITests: XCTestCase {
         XCTAssertEqual(app.staticTexts["profit-sp500"].label, "−11,444円")
         XCTAssertEqual(app.staticTexts["comparison-difference"].label, "21,279円")
         capture(app, name: "monthly-results")
+
+        // The same 630,000 yen paid in at once on 2025-01-06, fund by fund.
+        let allCountryLumpSum = lumpSumRow(app, "all-country")
+        reveal(allCountryLumpSum, in: app)
+        XCTAssertTrue(allCountryLumpSum.label.contains("756,000円"))
+        XCTAssertTrue(allCountryLumpSum.label.contains("一括のほうが158,723円多い"))
+        XCTAssertTrue(lumpSumRow(app, "sp500").label.contains("882,000円"))
+        XCTAssertTrue(lumpSumRow(app, "sp500").label.contains("一括のほうが263,444円多い"))
+        XCTAssertEqual(app.staticTexts["lump-sum-summary"].label, "この期間は、2商品とも一括のほうが多い結果でした。")
+        capture(app, name: "monthly-lump-sum")
 
         // The principal in the readout counts only what was paid in by the selected day.
         reveal(app.staticTexts["chart-selected-day"], in: app)
@@ -415,6 +427,11 @@ final class ComparisonUITests: XCTestCase {
 
     @MainActor private func chartPrincipal(_ app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any).matching(identifier: "chart-principal").firstMatch
+    }
+
+    // Each lump-sum row combines its name, amount and verdict into one element.
+    @MainActor private func lumpSumRow(_ app: XCUIApplication, _ id: String) -> XCUIElement {
+        app.descendants(matching: .any).matching(identifier: "lump-sum-\(id)").firstMatch
     }
 
     @MainActor private func capture(_ app: XCUIApplication, name: String) {
