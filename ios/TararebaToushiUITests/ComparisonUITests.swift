@@ -22,7 +22,13 @@ final class ComparisonUITests: XCTestCase {
         XCTAssertTrue(app.buttons["fund-sp500"].isSelected)
         XCTAssertFalse(app.buttons["fund-topix"].isSelected)
         XCTAssertEqual(app.staticTexts["fund-selection-count"].label, "2商品を選択中（8商品まで選べます）")
+        // Grouped by the catalog's categories; a kind this version cannot compute is only counted.
+        XCTAssertTrue(app.staticTexts["株式"].exists)
+        XCTAssertFalse(app.buttons["fund-later-kind"].exists)
         capture(app, name: "fund-picker")
+        let hidden = app.staticTexts["hidden-funds"]
+        reveal(hidden, in: app)
+        XCTAssertEqual(hidden.label, "アプリを更新すると、ほかに1商品から選べるようになります。")
         closeFundPicker(app)
 
         simulate(app)

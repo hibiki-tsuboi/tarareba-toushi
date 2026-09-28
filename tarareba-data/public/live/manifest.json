@@ -1,13 +1,17 @@
 {
   "schemaVersion": 2,
-  "datasetVersion": "mufg-20260907-6b11d6fe48ea",
+  "datasetVersion": "mufg-20260907-bb348f3036a7",
   "isSample": false,
-  "publishedAt": "2026-09-07T15:47:02Z",
+  "publishedAt": "2026-09-28T05:22:04Z",
   "funds": [
     {
       "id": "all-country",
       "displayName": "eMAXIS Slim 全世界株式（オール・カントリー）",
+      "shortName": "オルカン",
+      "summary": "日本を含む世界中の株式",
+      "category": "株式",
       "currency": "JPY",
+      "valueBasis": "nav",
       "path": "funds/all-country.json",
       "contentVersion": "fund-7bd6b7dadf1a8d23f852d2eea31963249b8f2119ebdc4d6f150ce5c1fa7c31b1",
       "firstDate": "2018-10-31",
@@ -16,7 +20,11 @@
     {
       "id": "sp500",
       "displayName": "eMAXIS Slim 米国株式（S&P500）",
+      "shortName": "S&P500",
+      "summary": "米国の代表的な大企業 約500社",
+      "category": "株式",
       "currency": "JPY",
+      "valueBasis": "nav",
       "path": "funds/sp500.json",
       "contentVersion": "fund-490e6d12f105d383234107913777f6dcfaa5f4b63110696b9684bada55af40ad",
       "firstDate": "2018-07-03",
@@ -25,7 +33,11 @@
     {
       "id": "topix",
       "displayName": "ｅＭＡＸＩＳ Ｓｌｉｍ 国内株式（ＴＯＰＩＸ）",
+      "shortName": "TOPIX",
+      "summary": "日本の株式市場全体",
+      "category": "株式",
       "currency": "JPY",
+      "valueBasis": "nav",
       "path": "funds/topix.json",
       "contentVersion": "fund-6902515358168781a9ce2006d3e34d69f38d5e50556764995785e1ba3c04b8ff",
       "firstDate": "2017-02-27",
@@ -34,7 +46,11 @@
     {
       "id": "nasdaq100",
       "displayName": "ｅＭＡＸＩＳ ＮＡＳＤＡＱ１００インデックス",
+      "shortName": "NASDAQ100",
+      "summary": "ナスダック上場の大企業 約100社（ハイテク中心）",
+      "category": "株式",
       "currency": "JPY",
+      "valueBasis": "nav",
       "path": "funds/nasdaq100.json",
       "contentVersion": "fund-148c06a057220a44a3540be234ed2c7c806173e52022d9f2d8c3c54ae52d2c86",
       "firstDate": "2021-01-29",
@@ -43,25 +59,24 @@
     {
       "id": "nikkei225",
       "displayName": "ｅＭＡＸＩＳ Ｓｌｉｍ 国内株式（日経平均）",
+      "shortName": "日経平均",
+      "summary": "日本を代表する225社",
+      "category": "株式",
       "currency": "JPY",
+      "valueBasis": "nav",
       "path": "funds/nikkei225.json",
       "contentVersion": "fund-0d4849d2d0a6e8587a915259f67285542ddfc2ce0970c6304e95a1e9306636f8",
       "firstDate": "2018-02-02",
       "lastDate": "2026-09-07"
     },
     {
-      "id": "gold",
-      "displayName": "三菱ＵＦＪ 純金ファンド",
-      "currency": "JPY",
-      "path": "funds/gold.json",
-      "contentVersion": "fund-9bf29031e5cd0b741cc851cb4ee17d281f17bcc3b7cc814f67278f6e586067f3",
-      "firstDate": "2011-02-07",
-      "lastDate": "2026-09-07"
-    },
-    {
       "id": "emerging",
       "displayName": "ｅＭＡＸＩＳ Ｓｌｉｍ 新興国株式インデックス",
+      "shortName": "新興国株",
+      "summary": "中国・インド・台湾などの新興国の株式",
+      "category": "株式",
       "currency": "JPY",
+      "valueBasis": "nav",
       "path": "funds/emerging.json",
       "contentVersion": "fund-51f45f3baa0ba04374e33af5ba99ed4d3e355736328e26c6d9f41272711fe949",
       "firstDate": "2017-07-31",
@@ -70,7 +85,11 @@
     {
       "id": "nanotech",
       "displayName": "ｅＭＡＸＩＳ Ｎｅｏ ナノテクノロジー",
+      "shortName": "ナノテク",
+      "summary": "国内外のナノテクノロジー関連企業",
+      "category": "株式",
       "currency": "JPY",
+      "valueBasis": "nav",
       "path": "funds/nanotech.json",
       "contentVersion": "fund-1e24e9205ce949128cc4c0df1f91a66010608d2d748ea0b3842595194a186031",
       "firstDate": "2018-12-03",
@@ -79,7 +98,11 @@
     {
       "id": "genomics",
       "displayName": "ｅＭＡＸＩＳ Ｎｅｏ 遺伝子工学",
+      "shortName": "遺伝子工学",
+      "summary": "国内外の遺伝子工学関連企業",
+      "category": "株式",
       "currency": "JPY",
+      "valueBasis": "nav",
       "path": "funds/genomics.json",
       "contentVersion": "fund-19990ff67b787a6ef6493fc7d5456708b995af53539a2217b97debe704fef096",
       "firstDate": "2018-08-06",
@@ -88,11 +111,31 @@
     {
       "id": "developed-bond",
       "displayName": "ｅＭＡＸＩＳ Ｓｌｉｍ 先進国債券インデックス（除く日本）",
+      "shortName": "先進国債券",
+      "summary": "日本を除く先進国の国債",
+      "category": "債券",
       "currency": "JPY",
+      "valueBasis": "nav",
       "path": "funds/developed-bond.json",
       "contentVersion": "fund-68a76cc6e3ad39e4687d4222b1ee1358f363d97b81d97f1a4f26a6d11ffe261c",
       "firstDate": "2017-02-27",
       "lastDate": "2026-09-07"
+    },
+    {
+      "id": "gold",
+      "displayName": "三菱ＵＦＪ 純金ファンド",
+      "shortName": "純金",
+      "summary": "金（ゴールド）",
+      "category": "金",
+      "currency": "JPY",
+      "valueBasis": "nav",
+      "path": "funds/gold.json",
+      "contentVersion": "fund-9bf29031e5cd0b741cc851cb4ee17d281f17bcc3b7cc814f67278f6e586067f3",
+      "firstDate": "2011-02-07",
+      "lastDate": "2026-09-07"
     }
+  ],
+  "notices": [
+    "「オルカン」は三菱UFJアセットマネジメントの登録商標です。"
   ]
 }

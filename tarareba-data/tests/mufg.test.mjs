@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { funds, latestURL, datedURL, csvURL, csvHeaders, parseFundInformation, parseMufgCSV,
     createSnapshot, writeSnapshot, fetchBytes, updateFromMufg, readSnapshot } from '../scripts/fetch-mufg.mjs';
-import { validate, liveIDs } from '../scripts/contract.mjs';
+import { maximumCatalogFunds, validate } from '../scripts/contract.mjs';
 
 // Fictional API responses; these tests never contact the provider.
 const histories = () => funds.map(f => ({ observations: [
@@ -260,17 +260,22 @@ test('missing or incompatible local history fails before any request; initial ba
     const fetcher = async () => { requests++; throw new Error('No network allowed'); };
     await assert.rejects(updateFromMufg(root, fetcher, options), /--backfill/);
     assert.equal(requests, 0);
+    // A reinvested series can no longer be written, so it is placed on disk directly.
     const old = createSnapshot(histories());
+    old.manifest.funds.forEach(f => f.valueBasis = 'reinvestedIndex');
     old.series.forEach(s => s.valueBasis = 'reinvestedIndex');
-    await writeSnapshot(old, root);
-    await assert.rejects(updateFromMufg(root, fetcher, options), /通常基準価額ではありません/);
+    await mkdir(resolve(root, 'public/live/funds'), { recursive: true });
+    for (const s of old.series) await writeFile(resolve(root, 'public/live/funds', `${s.fundId}.json`), JSON.stringify(s));
+    await writeFile(resolve(root, 'public/live/manifest.json'), JSON.stringify(old.manifest));
+    await assert.rejects(updateFromMufg(root, fetcher, options));
     assert.equal(requests, 0);
 });
 
 test('adding a fund imports its history from one CSV and never refetches the saved ones', async t => {
     // Stands in for a product added to the catalogue later.
     const added = { id: 'test-fund', code: '000000', associationCode: '0000000A', isin: 'JP90C0000000',
-        name: 'テスト専用の追加商品', start: '2025-01-06', page: 'https://www.am.mufg.jp/fund/000000.html' };
+        name: 'テスト専用の追加商品', start: '2025-01-06', shortName: 'テスト', summary: 'テスト専用の商品',
+        page: 'https://www.am.mufg.jp/fund/000000.html' };
     const root = await folder(t);
     funds.push(added);
     t.after(() => { funds.pop(); });
@@ -315,7 +320,8 @@ test('adding a fund imports its history from one CSV and never refetches the sav
 
 test('an imported history is sampled against the API and rejected when it disagrees', async t => {
     const added = { id: 'test-fund', code: '000000', associationCode: '0000000A', isin: 'JP90C0000000',
-        name: 'テスト専用の追加商品', start: '2025-01-06', page: 'https://www.am.mufg.jp/fund/000000.html' };
+        name: 'テスト専用の追加商品', start: '2025-01-06', shortName: 'テスト', summary: 'テスト専用の商品',
+        page: 'https://www.am.mufg.jp/fund/000000.html' };
     const root = await folder(t);
     funds.push(added);
     t.after(() => { funds.pop(); });
@@ -494,10 +500,6 @@ test('only the changed fund gets new content and the fixed file count stays cons
 });
 
 test('migration from versioned URLs preserves every date and value and subsequent writes stay fixed', async t => {
-    // Format 1 requires exactly the compared funds, so this retired layout is
-    // exercised with the catalogue trimmed back to them.
-    const extra = funds.splice(liveIDs.length);
-    t.after(() => { funds.push(...extra); });
     const root = await folder(t, null);
     const legacy = createSnapshot(histories());
     legacy.manifest.schemaVersion = 1;
@@ -522,21 +524,59 @@ test('migration from versioned URLs preserves every date and value and subsequen
     assert.deepEqual(await readdir(resolve(root, 'public/live/funds')), files);
 });
 
-test('a hundred-product catalog can contain additional histories outside the comparison period', () => {
+test('the catalog decides the products, within what the app offers', () => {
     const snapshot = createSnapshot(histories());
-    for (let index = funds.length; index < 100; index++) {
-        const series = structuredClone(snapshot.series[0]);
-        series.fundId = `additional-${index}`;
-        series.observations = [{ date: '2010-01-04', value: '10000' }];
-        const descriptor = { ...snapshot.manifest.funds[0], id: series.fundId,
-            displayName: `追加商品${index}`, path: `funds/${series.fundId}.json`,
-            firstDate: '2010-01-04', lastDate: '2010-01-04' };
-        snapshot.series.push(series);
-        snapshot.manifest.funds.push(descriptor);
+    const extend = (data, count) => {
+        for (let index = data.manifest.funds.length; index < count; index++) {
+            const series = structuredClone(data.series[0]);
+            series.fundId = `additional-${index}`;
+            // Outside the period the first pair shares: products may have disjoint lifetimes.
+            series.observations = [{ date: '2010-01-04', value: '10000' }];
+            data.series.push(series);
+            data.manifest.funds.push({ ...data.manifest.funds[0], id: series.fundId,
+                displayName: `追加商品${index}`, shortName: `追加${index}`, category: '追加',
+                path: `funds/${series.fundId}.json`, firstDate: '2010-01-04', lastDate: '2010-01-04' });
+        }
+        return data;
+    };
+    assert.equal(validate(extend(structuredClone(snapshot), maximumCatalogFunds), 'live').manifest.funds.length,
+        maximumCatalogFunds);
+    assert.throws(() => validate(extend(structuredClone(snapshot), maximumCatalogFunds + 1), 'live'), /20まで/);
+    // Withdrawing a product is the catalog's decision too.
+    const withdrawn = structuredClone(snapshot);
+    withdrawn.manifest.funds.splice(2, 1);
+    withdrawn.series.splice(2, 1);
+    assert.equal(validate(withdrawn, 'live').manifest.funds.length, funds.length - 1);
+});
+
+test('every product carries what the app shows, and categories stay together', () => {
+    const snapshot = createSnapshot(histories());
+    for (const change of [
+        s => delete s.manifest.funds[0].shortName, s => s.manifest.funds[0].shortName = ' ',
+        s => s.manifest.funds[0].shortName = '長'.repeat(21), s => s.manifest.funds[0].summary = '長'.repeat(61),
+        s => s.manifest.funds[0].category = '', s => s.manifest.funds[0].shortName += 'サンプル',
+        s => s.manifest.funds[0].valueBasis = 'price', s => s.manifest.funds[0].currency = 'USD',
+        s => s.series[0].valueBasis = 'reinvestedIndex', s => delete s.manifest.notices,
+        s => s.manifest.notices = [''], s => s.manifest.notices = ['長'.repeat(201)],
+        // 株式 would appear again after 債券.
+        s => s.manifest.funds.at(-1).category = '株式'
+    ]) {
+        const changed = structuredClone(snapshot); change(changed);
+        assert.throws(() => validate(changed, 'live'));
     }
-    assert.equal(validate(snapshot, 'live').manifest.funds.length, 100);
-    const missing = structuredClone(snapshot);
-    missing.manifest.funds.shift();
-    missing.series.shift();
-    assert.throws(() => validate(missing, 'live'), /必要な商品/);
+    const categories = snapshot.manifest.funds.map(f => f.category);
+    assert.deepEqual([...new Set(categories)], ['株式', '債券', '金']);
+    assert.deepEqual(snapshot.manifest.notices, ['「オルカン」は三菱UFJアセットマネジメントの登録商標です。']);
+});
+
+test('a changed name or notice publishes a new edition instead of a silent change', async t => {
+    const root = await folder(t);
+    const before = await readSnapshot(root);
+    const original = funds[2].summary;
+    funds[2].summary = '日本の株式市場全体（東証）';
+    t.after(() => { funds[2].summary = original; });
+    const next = await writeSnapshot(createSnapshot(histories()), root);
+    assert.notEqual(next.manifest.datasetVersion, before.manifest.datasetVersion);
+    assert.deepEqual(next.series, before.series);
+    assert.equal((await readSnapshot(root)).manifest.funds[2].summary, '日本の株式市場全体（東証）');
 });

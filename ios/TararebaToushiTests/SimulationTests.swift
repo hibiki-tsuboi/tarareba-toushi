@@ -5,20 +5,20 @@ import Testing
 
 struct SimulationTests {
     @Test(arguments: [DatasetMode.live, .sample])
-    func comparisonUsesTheFullAmountForBothFundsInFixedOrder(mode: DatasetMode) throws {
+    func comparisonUsesTheFullAmountForEveryFundInCatalogOrder(mode: DatasetMode) throws {
         var snapshot = Fixtures.snapshot(mode: mode)
         snapshot.manifest.funds.reverse()
         snapshot.series.reverse()
         let dataset = try DatasetValidator.validate(snapshot, mode: mode)
         // More products are delivered than may be compared at once, so take the limit.
-        let compared = Array(mode.fundIDs.prefix(AppConfiguration.maximumComparisonFunds))
+        let compared = Array(Fixtures.ids(mode).reversed().prefix(AppConfiguration.maximumComparisonFunds))
         let input = SimulationInput(
             amount: 1_000_000, requestedDate: "2025-01-01", fundIDs: compared.reversed())
         let result = try SimulationCalculator.calculate(input, dataset: dataset)
-        // Neither the catalog order nor the request order changes the displayed order.
+        // The catalog decides the displayed order; the order of the request does not.
         #expect(result.funds.map(\.id) == compared)
-        #expect(result.funds.map(\.displayedValuation) == [1_200_000, 1_400_000, 1_300_000, 1_600_000, 1_500_000, 1_700_000, 1_800_000, 1_900_000])
-        #expect(result.funds.map(\.displayedProfit) == [200_000, 400_000, 300_000, 600_000, 500_000, 700_000, 800_000, 900_000])
+        #expect(result.funds.map(\.displayedValuation) == [2_100_000, 2_000_000, 1_900_000, 1_800_000, 1_700_000, 1_500_000, 1_600_000, 1_300_000])
+        #expect(result.funds.map(\.displayedProfit) == [1_100_000, 1_000_000, 900_000, 800_000, 700_000, 500_000, 600_000, 300_000])
         #expect(result.funds.allSatisfy { $0.points.first?.amount == 1_000_000 })
         #expect(result.funds[0].points.map(\.day) == result.funds[1].points.map(\.day))
         #expect(result.startDate.rawValue == "2025-01-06")
@@ -191,9 +191,8 @@ struct SimulationTests {
 
     @Test func rejectsInvalidDatasets() throws {
         let mutations: [(inout DatasetSnapshot) -> Void] = [
+            // A product the catalog lists wrongly is left out instead; see CatalogTests.
             { $0.manifest.schemaVersion = 2 }, { $0.manifest.isSample = false },
-            { $0.manifest.funds[0].currency = "USD" }, { $0.manifest.funds[0].path = "https://evil.example/data.json" },
-            { $0.manifest.funds[0].path = "../test.json" }, { $0.manifest.funds[0].path = "funds/%2e%2e/test.json" },
             { $0.manifest.funds[1].id = $0.manifest.funds[0].id }, { $0.series[0].valueBasis = "unknown" },
             { $0.series[0].isSample = false }, { $0.series[0].datasetVersion = "sample-v9" },
             { $0.series[0].currency = "USD" }, { $0.series[0].fundId = "wrong" },

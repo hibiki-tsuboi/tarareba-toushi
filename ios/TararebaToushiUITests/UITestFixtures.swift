@@ -3,7 +3,8 @@ import XCTest
 
 // Only the UI test runner owns these fictional responses; it supplies them at launch.
 enum UITestFixtures {
-    // One catalog request plus one history per fund in the fixture below.
+    // One catalog request plus one history per offered fund in the fixture below. The
+    // live catalog also lists one product the app cannot compute, which is never fetched.
     static let requestsPerUpdate = 11
 
     @MainActor static func app(mode: String = "sample", session: UUID = UUID()) -> XCUIApplication {
@@ -32,6 +33,13 @@ enum UITestFixtures {
                 "ｅＭＡＸＩＳ Ｎｅｏ 遺伝子工学",
                 "ｅＭＡＸＩＳ Ｓｌｉｍ 先進国債券インデックス（除く日本）",
             ]
+        let shortNames = ["オルカン", "S&P500", "TOPIX", "NASDAQ100", "日経平均", "純金", "新興国株", "ナノテク", "遺伝子工学", "先進国債券"]
+            .map { sample ? $0 + "（サンプル）" : $0 }
+        let summaries = ["日本を含む世界中の株式", "米国の代表的な大企業 約500社", "日本の株式市場全体",
+            "ナスダック上場の大企業 約100社（ハイテク中心）", "日本を代表する225社", "金（ゴールド）",
+            "中国・インド・台湾などの新興国の株式", "国内外のナノテクノロジー関連企業", "国内外の遺伝子工学関連企業",
+            "日本を除く先進国の国債"]
+        let categories = ["株式", "株式", "株式", "株式", "株式", "金", "株式", "株式", "株式", "債券"]
         let dates = ["2020-01-06", "2021-09-06", "2023-09-04", "2025-01-06", "2025-08-13", "2026-09-03", "2026-09-04"]
         let values = [["7000", "8000", "9000", "10000", "15000", "11900", "12000"],
             ["6000", "7000", "8000", "10000", "16000", "13900", "14000"],
@@ -46,15 +54,28 @@ enum UITestFixtures {
         let version = "ui-fixture-v1"
         // Hexadecimal only: a contentVersion must match ^fund-[a-f0-9]{64}$.
         let contentVersions = ["a", "b", "c", "d", "e", "f", "0", "1", "2", "3"].map { "fund-" + String(repeating: $0, count: 64) }
-        let descriptors: [[String: Any]] = ids.enumerated().map { index, id in
-            var descriptor: [String: Any] = ["id": id, "displayName": names[index], "currency": "JPY",
+        var descriptors: [[String: Any]] = ids.enumerated().map { index, id in
+            var descriptor: [String: Any] = ["id": id, "displayName": names[index], "shortName": shortNames[index],
+                "summary": summaries[index], "currency": "JPY", "valueBasis": sample ? "reinvestedIndex" : "nav",
                 "path": sample ? "funds/\(id).\(version).json" : "funds/\(id).json",
                 "firstDate": dates[0], "lastDate": dates[dates.count - 1]]
-            if !sample { descriptor["contentVersion"] = contentVersions[index] }
+            if !sample {
+                descriptor["contentVersion"] = contentVersions[index]
+                descriptor["category"] = categories[index]
+            }
             return descriptor
         }
+        var notices: [String] = []
+        if !sample {
+            // A kind of product only a later version computes; it has no history here.
+            descriptors.append(["id": "later-kind", "displayName": "後のバージョン向けの商品", "shortName": "新しい種類",
+                "summary": "このバージョンでは計算できない商品", "currency": "USD", "valueBasis": "price",
+                "path": "funds/later-kind.json", "contentVersion": "fund-" + String(repeating: "9", count: 64),
+                "firstDate": dates[0], "lastDate": dates[dates.count - 1]])
+            notices = ["自動テスト用の表記です。"]
+        }
         let manifest: [String: Any] = ["schemaVersion": sample ? 1 : 2, "datasetVersion": version, "isSample": sample,
-            "publishedAt": "2026-09-06T00:00:00Z", "funds": descriptors]
+            "publishedAt": "2026-09-06T00:00:00Z", "funds": descriptors, "notices": notices]
         var result = ["/\(mode)/manifest.json": json(manifest)]
         for (index, id) in ids.enumerated() {
             let source: [String: Any] = ["kind": sample ? "synthetic" : "official", "name": "自動テスト用の架空値",

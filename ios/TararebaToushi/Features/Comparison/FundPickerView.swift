@@ -3,7 +3,9 @@ import SwiftUI
 // Chosen from a sheet so the input screen can show every setting at once, with room
 // here to say what each fund holds.
 struct FundPickerView: View {
-    let funds: [FundDescriptor]
+    let groups: [FundGroup]
+    // Delivered products this version cannot offer.
+    let hiddenCount: Int
     let selection: [String]
     let message: String?
     let onToggle: (String) -> Void
@@ -24,10 +26,27 @@ struct FundPickerView: View {
                             .foregroundStyle(.orange)
                             .accessibilityIdentifier("fund-selection-error")
                     }
-                    VStack(spacing: 8) {
-                        ForEach(funds) { fund in
-                            choice(fund)
+                    ForEach(groups) { group in
+                        VStack(alignment: .leading, spacing: 8) {
+                            if let title = group.title {
+                                Text(title)
+                                    .font(.footnote.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                                    .padding(.top, 8)
+                                    .accessibilityAddTraits(.isHeader)
+                            }
+                            ForEach(group.funds) { fund in
+                                choice(fund)
+                            }
                         }
+                    }
+                    if hiddenCount > 0 {
+                        Label("アプリを更新すると、ほかに\(hiddenCount)商品から選べるようになります。", systemImage: "arrow.down.circle")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.top, 4)
+                            .accessibilityIdentifier("hidden-funds")
                     }
                 }
                 .padding(20)

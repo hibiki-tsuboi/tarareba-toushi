@@ -58,7 +58,7 @@ struct SimulationResultView: View {
                 ValuationChartView(result: result)
                 VStack(alignment: .leading, spacing: 6) {
                     if !result.isSample {
-                        Text("三菱UFJアセットマネジメント公表データをもとに、たられば投資が独自に算出しています。")
+                        Text("\(result.sourceNames.joined(separator: "、"))公表データをもとに、たられば投資が独自に算出しています。")
                         Text("算出基準日：\(result.endDate.label)（この日までのデータで計算しています）")
                     }
                     Text(result.isSample

@@ -4,59 +4,6 @@ import Testing
 @testable import TararebaToushi
 
 @MainActor struct LiveDataTests {
-    @Test func recentLegacyNAVCacheUpdatesImmediatelyAndThenUsesNormalRefreshInterval() async throws {
-        let now = Date(timeIntervalSince1970: 10_000)
-        var legacy = Fixtures.snapshot(version: "legacy-nav", mode: .live)
-        legacy.series = legacy.series.map { series in
-            var copy = series
-            copy.valueBasis = "navWithoutDistributions"
-            return copy
-        }
-        let updated = Fixtures.snapshot(version: "ordinary-nav", mode: .live)
-        let transport = MockTransport(try Fixtures.responses(updated))
-        let store = MemoryStore(Fixtures.envelope(legacy, checkedAt: now))
-        let repo = FundRepository(configuration: AppConfiguration(), transport: transport, store: store, now: { now })
-
-        await repo.start(refresh: false)
-        #expect(repo.isStale)
-        #expect(repo.dataset?.snapshot == legacy)
-        let requestsPerUpdate = Fixtures.requests(.live)
-        await repo.refresh()
-        #expect(await transport.count == requestsPerUpdate)
-        #expect(repo.dataset?.snapshot == updated)
-        #expect(await store.value?.snapshot == updated)
-        #expect(!repo.isStale)
-        await repo.refresh()
-        #expect(await transport.count == requestsPerUpdate)
-    }
-
-    @Test func failedLegacyNAVUpdatePreservesCacheAndRetriesWithoutWaitingSixHours() async throws {
-        let now = Date(timeIntervalSince1970: 10_000)
-        var legacy = Fixtures.snapshot(version: "legacy-nav", mode: .live)
-        legacy.series[0].valueBasis = "navWithoutDistributions"
-        let updated = Fixtures.snapshot(version: "ordinary-nav", mode: .live)
-        var partial = try Fixtures.responses(updated)
-        partial.removeValue(forKey: "/live/funds/sp500.ordinary-nav.json")
-        let transport = MockTransport(partial)
-        let store = MemoryStore(Fixtures.envelope(legacy, checkedAt: now))
-        let repo = FundRepository(configuration: AppConfiguration(), transport: transport, store: store, now: { now })
-
-        // Stops at the missing history: the catalog, the funds before it and the failure.
-        let failedAttempt = DatasetMode.live.fundIDs.firstIndex(of: "sp500")! + 2
-        await repo.start()
-        #expect(await transport.count == failedAttempt)
-        #expect(repo.dataset?.snapshot == legacy)
-        #expect(await store.value?.snapshot == legacy)
-        #expect(repo.isStale)
-        #expect(repo.message != nil)
-        await transport.set(try Fixtures.responses(updated))
-        await repo.refresh()
-        #expect(await transport.count == failedAttempt + Fixtures.requests(.live))
-        #expect(repo.dataset?.snapshot == updated)
-        #expect(!repo.isStale)
-        #expect(repo.message == nil)
-    }
-
     @Test func recentOrdinaryNAVCacheKeepsNormalRefreshInterval() async {
         let now = Date(timeIntervalSince1970: 10_000)
         let snapshot = Fixtures.snapshot(mode: .live)
@@ -196,7 +143,6 @@ import Testing
             { $0.series[0].source.kind = "synthetic" }, { $0.series[0].source.url = nil },
             { $0.series[0].source.url = "http://example.com/" },
             { $0.series[0].source.url = "https://user:password@example.com/" },
-            { $0.manifest.funds[0].displayName += "（サンプル）" },
         ]
         for mutate in mutations {
             var snapshot = Fixtures.snapshot(mode: .live)

@@ -26,12 +26,18 @@ extension View {
 
 struct DataNoticeView: View {
     let mode: DatasetMode
+    // The providers of the delivered values; empty until data has been fetched.
+    let sources: [String]
 
     var body: some View {
         Label {
             VStack(alignment: .leading, spacing: 3) {
                 Text(mode == .sample ? "サンプルデータ" : "投資信託の実データ").fontWeight(.semibold)
-                Text(mode == .sample ? "実際の運用実績ではありません" : "出所：三菱UFJアセットマネジメント")
+                if mode == .sample {
+                    Text("実際の運用実績ではありません")
+                } else if !sources.isEmpty {
+                    Text("出所：\(sources.joined(separator: "、"))")
+                }
             }
         } icon: {
             Image(systemName: mode == .sample ? "sparkles.rectangle.stack" : "chart.xyaxis.line")

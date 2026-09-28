@@ -7,7 +7,10 @@
     {
       "id": "demo-all-country",
       "displayName": "オルカン（サンプル）",
+      "shortName": "オルカン（サンプル）",
+      "summary": "日本を含む世界中の株式",
       "currency": "JPY",
+      "valueBasis": "reinvestedIndex",
       "path": "funds/demo-all-country.sample-v9.json",
       "firstDate": "2020-01-06",
       "lastDate": "2026-09-07"
@@ -15,7 +18,10 @@
     {
       "id": "demo-sp500",
       "displayName": "S&P500（サンプル）",
+      "shortName": "S&P500（サンプル）",
+      "summary": "米国の代表的な大企業 約500社",
       "currency": "JPY",
+      "valueBasis": "reinvestedIndex",
       "path": "funds/demo-sp500.sample-v9.json",
       "firstDate": "2020-01-06",
       "lastDate": "2026-09-07"
@@ -23,7 +29,10 @@
     {
       "id": "demo-topix",
       "displayName": "TOPIX（サンプル）",
+      "shortName": "TOPIX（サンプル）",
+      "summary": "日本の株式市場全体",
       "currency": "JPY",
+      "valueBasis": "reinvestedIndex",
       "path": "funds/demo-topix.sample-v9.json",
       "firstDate": "2020-01-06",
       "lastDate": "2026-09-07"
@@ -31,7 +40,10 @@
     {
       "id": "demo-nasdaq100",
       "displayName": "NASDAQ100（サンプル）",
+      "shortName": "NASDAQ100（サンプル）",
+      "summary": "ナスダック上場の大企業 約100社（ハイテク中心）",
       "currency": "JPY",
+      "valueBasis": "reinvestedIndex",
       "path": "funds/demo-nasdaq100.sample-v9.json",
       "firstDate": "2020-01-06",
       "lastDate": "2026-09-07"
@@ -39,7 +51,10 @@
     {
       "id": "demo-nikkei225",
       "displayName": "日経平均（サンプル）",
+      "shortName": "日経平均（サンプル）",
+      "summary": "日本を代表する225社",
       "currency": "JPY",
+      "valueBasis": "reinvestedIndex",
       "path": "funds/demo-nikkei225.sample-v9.json",
       "firstDate": "2020-01-06",
       "lastDate": "2026-09-07"
@@ -47,7 +62,10 @@
     {
       "id": "demo-gold",
       "displayName": "純金（サンプル）",
+      "shortName": "純金（サンプル）",
+      "summary": "金（ゴールド）",
       "currency": "JPY",
+      "valueBasis": "reinvestedIndex",
       "path": "funds/demo-gold.sample-v9.json",
       "firstDate": "2020-01-06",
       "lastDate": "2026-09-07"
@@ -55,7 +73,10 @@
     {
       "id": "demo-emerging",
       "displayName": "新興国株（サンプル）",
+      "shortName": "新興国株（サンプル）",
+      "summary": "中国・インド・台湾などの新興国の株式",
       "currency": "JPY",
+      "valueBasis": "reinvestedIndex",
       "path": "funds/demo-emerging.sample-v9.json",
       "firstDate": "2020-01-06",
       "lastDate": "2026-09-07"
@@ -63,7 +84,10 @@
     {
       "id": "demo-nanotech",
       "displayName": "ナノテク（サンプル）",
+      "shortName": "ナノテク（サンプル）",
+      "summary": "国内外のナノテクノロジー関連企業",
       "currency": "JPY",
+      "valueBasis": "reinvestedIndex",
       "path": "funds/demo-nanotech.sample-v9.json",
       "firstDate": "2020-01-06",
       "lastDate": "2026-09-07"
@@ -71,7 +95,10 @@
     {
       "id": "demo-genomics",
       "displayName": "遺伝子工学（サンプル）",
+      "shortName": "遺伝子工学（サンプル）",
+      "summary": "国内外の遺伝子工学関連企業",
       "currency": "JPY",
+      "valueBasis": "reinvestedIndex",
       "path": "funds/demo-genomics.sample-v9.json",
       "firstDate": "2020-01-06",
       "lastDate": "2026-09-07"
@@ -79,10 +106,14 @@
     {
       "id": "demo-developed-bond",
       "displayName": "先進国債券（サンプル）",
+      "shortName": "先進国債券（サンプル）",
+      "summary": "日本を除く先進国の国債",
       "currency": "JPY",
+      "valueBasis": "reinvestedIndex",
       "path": "funds/demo-developed-bond.sample-v9.json",
       "firstDate": "2020-01-06",
       "lastDate": "2026-09-07"
     }
-  ]
+  ],
+  "notices": []
 }

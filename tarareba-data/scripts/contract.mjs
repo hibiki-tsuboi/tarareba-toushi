@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
 
+// The products of the generated sample. Which live products exist is the catalog's to say.
 export const ids = ['demo-all-country', 'demo-sp500', 'demo-topix', 'demo-nasdaq100', 'demo-nikkei225', 'demo-gold', 'demo-emerging', 'demo-nanotech', 'demo-genomics', 'demo-developed-bond'];
-// The funds the app compares. Extra products may be delivered alongside them.
-export const liveIDs = ['all-country', 'sp500'];
+// The app downloads every product it offers and offers at most this many (AppConfiguration).
+export const maximumCatalogFunds = 20;
+// Counted in characters as the app counts them, not in UTF-16 units.
+const text = (value, limit) => typeof value === 'string' && value.trim() !== '' && [...value].length <= limit;
 export function day(value) {
     assert.match(value, /^\d{4}-\d{2}-\d{2}$/);
     const date = new Date(`${value}T12:00:00Z`);
@@ -11,10 +14,11 @@ export function day(value) {
     return date;
 }
 
+// Stricter than the app, which leaves out a product it cannot offer instead of failing:
+// everything published here must be something the current app can offer.
 export function validateManifest(m, mode = 'sample') {
     assert(['sample', 'live'].includes(mode));
     const isSample = mode === 'sample';
-    const expectedIDs = isSample ? ids : liveIDs;
     assert(isSample ? m.schemaVersion === 1 : [1, 2].includes(m.schemaVersion));
     assert.equal(m.isSample, isSample);
     assert.match(m.datasetVersion, /^[a-z0-9][a-z0-9-]{0,63}$/);
@@ -22,14 +26,20 @@ export function validateManifest(m, mode = 'sample') {
     day(m.publishedAt.slice(0, 10));
     assert(Number.isFinite(Date.parse(m.publishedAt)));
     assert.equal(new Date(m.publishedAt).toISOString().replace('.000Z', 'Z'), m.publishedAt);
-    assert(Array.isArray(m.funds) && m.funds.length > 0 && m.funds.length <= 1000);
+    assert(Array.isArray(m.funds) && m.funds.length > 0, '商品がありません');
+    assert(m.funds.length <= maximumCatalogFunds, `アプリが扱える商品は${maximumCatalogFunds}までです`);
     assert.equal(new Set(m.funds.map(f => f.id)).size, m.funds.length);
-    if (m.schemaVersion === 1) assert.deepEqual(m.funds.map(f => f.id).sort(), [...expectedIDs].sort());
-    else assert(expectedIDs.every(id => m.funds.some(f => f.id === id)), '比較に必要な商品がありません');
+    assert(Array.isArray(m.notices) && m.notices.length <= 10 && m.notices.every(n => text(n, 200)), '表記が不正です');
     for (const f of m.funds) {
         assert.equal(f.currency, 'JPY');
-        assert(f.displayName && f.displayName.length <= 80);
-        assert(isSample ? f.displayName.includes('サンプル') : !f.displayName.includes('サンプル'));
+        assert.equal(f.valueBasis, isSample ? 'reinvestedIndex' : 'nav');
+        assert(text(f.displayName, 80), '商品名が不正です');
+        assert(text(f.shortName, 20), '短い商品名が不正です');
+        assert(text(f.summary, 60), '商品の説明が不正です');
+        assert(f.category === undefined || text(f.category, 20), '商品の分類が不正です');
+        for (const name of [f.displayName, f.shortName]) {
+            assert(isSample ? name.includes('サンプル') : !name.includes('サンプル'));
+        }
         assert.match(f.id, /^[a-z0-9][a-z0-9-]{0,63}$/);
         if (m.schemaVersion === 2) {
             assert.equal(f.path, `funds/${f.id}.json`);
@@ -40,6 +50,9 @@ export function validateManifest(m, mode = 'sample') {
         day(f.firstDate); day(f.lastDate);
         assert(f.firstDate <= f.lastDate);
     }
+    // The picker groups by category in delivered order, so each category is listed together.
+    const categories = m.funds.map(f => f.category).filter((c, i, all) => c !== undefined && c !== all[i - 1]);
+    assert.equal(new Set(categories).size, categories.length, '同じ分類の商品は続けて並べてください');
     return m;
 }
 
@@ -56,7 +69,7 @@ export function validate(snapshot, mode = 'sample') {
         assert.equal(s.isSample, isSample);
         assert.equal(s.datasetVersion, m.schemaVersion === 2 ? f.contentVersion : m.datasetVersion);
         assert.equal(s.currency, 'JPY');
-        assert(['nav', 'reinvestedIndex', 'navWithoutDistributions'].includes(s.valueBasis));
+        assert.equal(s.valueBasis, f.valueBasis);
         assert.equal(s.source.kind, isSample ? 'synthetic' : 'official');
         assert(s.source.name && s.source.note);
         if (!isSample) {
@@ -74,13 +87,13 @@ export function validate(snapshot, mode = 'sample') {
             assert(Number(o.value) > 0);
             previous = o.date;
         }
-        // Extra catalog products may have disjoint lifetimes. Only the current
-        // comparison products need a shared observation date.
-        if ((isSample ? ids : liveIDs).includes(f.id)) {
+        // Products may have disjoint lifetimes. Only the pair the app selects first
+        // needs a shared observation date.
+        if (m.funds.indexOf(f) < 2) {
             const dates = new Set(s.observations.map(o => o.date));
             common = common ? common.intersection(dates) : dates;
         }
     }
-    assert(common.size > 0);
+    assert(common.size > 0, '最初に選ばれる商品に共通の観測日がありません');
     return snapshot;
 }

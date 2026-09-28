@@ -5,6 +5,12 @@ struct DataInformationView: View {
     let result: SimulationResult?
     @Environment(\.dismiss) private var dismiss
     private var isSample: Bool { repository.configuration.mode == .sample }
+    // Named from the delivered data, so a product from another provider is never credited
+    // to the wrong one.
+    private var providers: String {
+        let names = repository.dataset?.sourceNames ?? []
+        return names.isEmpty ? "運用会社" : names.joined(separator: "、")
+    }
 
     var body: some View {
         NavigationStack {
@@ -32,16 +38,16 @@ struct DataInformationView: View {
                     .accessibilityIdentifier("refresh-data")
                 }
                 Section {
-                    DataNoticeView(mode: repository.configuration.mode)
+                    DataNoticeView(mode: repository.configuration.mode, sources: repository.dataset?.sourceNames ?? [])
                     Text(isSample
                         ? "比較する商品はシミュレーションを試すための架空データです。実在する投資信託の基準価額や成績を再現していません。"
-                        : "選んだ投資信託を同じ条件で比較します。三菱UFJアセットマネジメントが公表する基準価額を本アプリ用に加工した値で、株価指数そのものの値ではありません。")
+                        : "選んだ投資信託を同じ条件で比較します。\(providers)が公表する基準価額を本アプリ用に加工した値で、株価指数そのものの値ではありません。")
                 }
                 if !isSample {
                     Section("公表値とシミュレーション結果") {
                         row("算出主体", "たられば投資")
-                        Text("使用する基準価額は三菱UFJアセットマネジメントの公表値です。評価額・損益・損益率は、公表データをもとに本アプリが独自に算出した値であり、同社の公表値ではありません。")
-                        Text("三菱UFJアセットマネジメントが本アプリや算出内容を推奨・保証・公認するものではありません。")
+                        Text("使用する基準価額は\(providers)の公表値です。評価額・損益・損益率は、公表データをもとに本アプリが独自に算出した値であり、運用会社の公表値ではありません。")
+                        Text("\(providers)が本アプリや算出内容を推奨・保証・公認するものではありません。")
                     }
                 }
                 Section("計算のしかた") {
@@ -82,7 +88,9 @@ struct DataInformationView: View {
                     Text("売却時の税金、購入・換金時の手数料等は計算していません。注文・約定日・端数処理を完全に再現するものではありません。")
                     if !isSample {
                         Text("使用する基準価額は運用管理費用（信託報酬）控除後です。信託報酬をもう一度差し引くことはしません。")
-                        Text("「オルカン」は三菱UFJアセットマネジメントの登録商標です。")
+                    }
+                    ForEach(repository.dataset?.notices ?? [], id: \.self) { notice in
+                        Text(notice)
                     }
                     Text("過去の比較結果は将来の成果を保証しません。特定の商品の購入・売却を推奨するものではありません。")
                 }
@@ -111,7 +119,7 @@ struct DataInformationView: View {
                 Section("配信と更新") {
                     Text(repository.configuration.dataBaseURL).font(.footnote).textSelection(.enabled)
                     Text("初回起動時に比較データを取得します。初回はインターネット接続が必要です。取得後は端末に保存し、オフラインでも前回のデータで比較できます。")
-                    Text("起動・復帰時に、前回の確認成功から6時間以上経過していれば更新を確認します。旧形式の価格データを保存している場合は6時間を待たずに確認します。手動更新もできます。通信に失敗した場合は正常な保存データを保持します。")
+                    Text("起動・復帰時に、前回の確認成功から6時間以上経過していれば更新を確認します。手動更新もできます。通信に失敗した場合は正常な保存データを保持します。")
                     Text("データの最終日は、配信データに入っている最後の日です。今日のリアルタイム価格やファイルの公開日時ではありません。")
                 }
             }

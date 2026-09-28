@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-「たられば投資」＝複数の投資信託に同額を一括投資、または毎月積立していた場合を比較するiOSアプリと、その価格データを配信するCloudflare Workersの2つで構成されたリポジトリです。現在の配信商品はオルカン・S&P500・TOPIX・NASDAQ100・日経平均・純金・新興国株・ナノテク・遺伝子工学・先進国債券の10本で、同時比較は8商品まで・既定は先頭2商品です。ドキュメント・コミットメッセージ・UI文言・エラーメッセージはすべて日本語で書きます。
+「たられば投資」＝複数の投資信託に同額を一括投資、または毎月積立していた場合を比較するiOSアプリと、その価格データを配信するCloudflare Workersの2つで構成されたリポジトリです。現在の配信商品はオルカン・S&P500・TOPIX・NASDAQ100・日経平均・新興国株・ナノテク・遺伝子工学・先進国債券・純金の10本で、同時比較は8商品まで・既定は先頭2商品です。**どの商品を出すかは配信側の一覧が決め、アプリは商品を持ちません**（下記「商品一覧はサーバーが決める」）。ドキュメント・コミットメッセージ・UI文言・エラーメッセージはすべて日本語で書きます。
 
 ## 構成
 
@@ -87,6 +87,14 @@ npm run dev                 # wrangler dev（public/ をローカル配信して
 
 `tarareba-data/scripts/contract.mjs` と `ios/TararebaToushi/Data/DatasetValidator.swift` は**同じ不変条件**（スキーマ版、ID・パス・版の正規表現、通貨、`valueBasis`、観測日の昇順・重複なし、値の10進数書式、上限30,000観測 / 2MiB、共通日の存在）を別々に実装しています。片方を変更したら必ずもう片方と `docs/data-format.md` も更新し、両方のテストを走らせます。
 
+### 商品一覧はサーバーが決める
+
+- アプリに商品ID・商品名・説明・運用会社名は書きません。一覧（`manifest.json`）の各商品が `shortName` / `summary` / 任意の `category` / `valueBasis` を持ち、出所は履歴の `source.name`、登録商標などの表記は一覧の `notices` から出します。商品の定義は `tarareba-data/scripts/fetch-mufg.mjs` の `funds` に書きます。
+- 一覧の並びがアプリの並び・系列色の順で、先頭2商品が初回の選択です。同じ `category` は続けて並べます（`contract.mjs` が確認）。
+- アプリが出すのは、自分が計算できる商品（現在は `JPY` かつ `valueBasis: "nav"`）だけで、先頭から20商品（`AppConfiguration.maximumCatalogFunds`）までです。**それ以外は一覧全体を拒否せずその商品だけ読み飛ばし**（`DatasetValidator.validateManifest` が扱える商品を返す。`Manifest` のデコードも商品単位で失敗を許す）、履歴もダウンロードしません。数は `ValidatedDataset.hiddenFundCount` で選択画面に出します。これは、公開済みのアプリに新しい種類の商品を配信しても壊れないための仕組みです。
+- 新しい種類の商品は新しい `valueBasis` か通貨で表し、既存の `nav` の意味や項目の型は変えません。計算できるアプリを公開してから配信します。規則の全体は `docs/data-format.md` の「公開済みのアプリを壊さないために」にあります。
+- `contract.mjs` はアプリより厳しく、現在のアプリが出せない商品・21商品以上・分類の途切れを公開前に拒否します。一覧全体の `datasetVersion` は履歴に加えて商品名・説明・分類・表記のハッシュなので、文言だけを変えても新しい版になります。
+
 ### 配信形式1と2
 
 - **形式2（現行の実データ）**: `funds/<id>.json` の固定URLを上書き。商品ごとの `contentVersion` は系列JSONのSHA-256（`fund-<64hex>`）で、対応する履歴の `datasetVersion` と一致します。一覧全体の `datasetVersion` は変更検知用でURLには入りません。内容が変わらなければ版も `publishedAt` も保持します。
@@ -106,19 +114,19 @@ npm run dev                 # wrangler dev（public/ をローカル配信して
 ### iOSの層
 
 - `App/AppConfiguration.swift` — 配信URL・`DatasetMode`（`live` / `sample`）・6時間の更新間隔・金額上限などの設定の集約点。`cacheIdentity`（URL＋モード＋保存形式）が保存ファイル名のハッシュになり、配信元やモードの異なるキャッシュが混ざりません。
-- `Data/FundRepository.swift` — `@MainActor @Observable`。起動時に保存データを読み、6時間経過していれば更新。`transport` / `store` / `now` を注入してテストします。取得失敗時は保存済みスナップショットを保持し、結果画面へは進めません。旧形式（`valueBasis != "nav"`）が残っている場合だけ6時間を待たずに更新します。
+- `Data/FundRepository.swift` — `@MainActor @Observable`。起動時に保存データを読み、6時間経過していれば更新。`transport` / `store` / `now` を注入してテストします。取得失敗時は保存済みスナップショットを保持し、結果画面へは進めません。
 - `Data/RemoteDataSource.swift` — 一覧を取得し、`contentVersion` が変わった商品の履歴だけダウンロード。一覧と履歴が食い違えば一覧から**1回だけ**再取得し、揃わなければ既存を保持します。
 - `Data/LocalSnapshotStore.swift` — Application Support配下に検証済みの単一スナップショットをatomic書き込み。バックアップ対象から除外。`origin == .bundled` の旧開発版キャッシュは採用しません。
 - `Domain/TradingDay.swift` — グレゴリオ暦・Asia/Tokyo固定の暦日。端末のカレンダー・タイムゾーンに依存しません。
 - `Domain/SimulationCalculator.swift` — 内部はすべて`Decimal`。評価額を1円へ四捨五入してから表示損益・差額を求めます（丸め後の値どうしで計算）。`Double`はグラフ描画時のみ。計算対象は `SimulationInput.fundIDs` の選択商品だけで、結果は配信順（オルカン→S&P500）に並べます。`SimulationInput.plan`（`lumpSum` / `monthly`、未保存の旧入力は一括）で購入日が決まり、`ComparisonDateResolver.purchaseDays` が毎月の購入日を共通観測日から選びます。評価額は直近の購入日から「掛けてから割る」順で繰り越すので、一括投資は従来の `元本 × 値 ÷ 開始値` と同じ結果です。割ってから掛ける形（口数の累積）に変えると、ちょうど0.5円の評価額が丸め誤差で1円ずれます。`FundResult.lumpSumValuation` は同じ元本を開始日に一括で入れた場合の評価額で、開始日より後にも購入した毎月積立の結果にだけ比較カードとして出します（`SimulationResult.comparesWithLumpSum`）。`deepestLoss` / `lumpSumDeepestLoss` は「その日の表示評価額 − その日までの元本」が最小かつ負の日（同額なら早い日、なければnil＝元本割れなし）で、高値からの下落率ではありません。
-- `Models/Dataset.swift` — `ValidatedDataset.window(for:)` が**選択商品だけの共通観測日**を返します。全商品の積集合は取りません（履歴の短い商品を1つ足しただけで、無関係な商品の比較期間まで縮むため）。同時比較は `AppConfiguration.maximumComparisonFunds`（8商品）まで、既定は先頭2商品。**配信商品数と同時比較の上限は別**で、10本を配信して同時比較は8本までにしています。系列色は選択順の添字で引くので、必要な色数は商品数ではなく上限と同じ8色です。上限を上げるときだけ `AppPalette.seriesColors` を足します。`startRange(for:)` は入力画面で選べる開始日の範囲で、`window(for:)` と同じ境界を全履歴の積集合を作らずに求めます（一致は `StartDateTests` で確認）。選択を変えて範囲外になった開始日は、`ComparisonModel.fitDate` が近い端へ動かして画面に知らせます。
+- `Models/Dataset.swift` — `ValidatedDataset.window(for:)` が**選択商品だけの共通観測日**を返します。全商品の積集合は取りません（履歴の短い商品を1つ足しただけで、無関係な商品の比較期間まで縮むため）。同時比較は `AppConfiguration.maximumComparisonFunds`（8商品）まで、既定は先頭2商品。**配信商品数・アプリが出す商品数（20）・同時比較の上限（8）はそれぞれ別**です。選択画面は `FundGroup.grouping` で `category` ごとに見出しを付けます。系列色は選択順の添字で引くので、必要な色数は商品数ではなく上限と同じ8色です。上限を上げるときだけ `AppPalette.seriesColors` を足します。`startRange(for:)` は入力画面で選べる開始日の範囲で、`window(for:)` と同じ境界を全履歴の積集合を作らずに求めます（一致は `StartDateTests` で確認）。選択を変えて範囲外になった開始日は、`ComparisonModel.fitDate` が近い端へ動かして画面に知らせます。
 
 ### iOSのコードの前提
 
 - ビルド設定は `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` ＋ `SWIFT_APPROACHABLE_CONCURRENCY = YES`（Swift 5言語モード）。**既定でMainActor隔離**なので、`DatasetMode` / `AppConfiguration` / `FixtureURLProtocol` のようにアクターを跨ぐ型にだけ明示的に `nonisolated` を付けます。
 - 単体テストはSwift Testing（`@Test` / `#expect`）、UIテストはXCTest。フィクスチャは各テストターゲットの `TestFixtures.swift` / `UITestFixtures.swift` に集約します。
 - テスト用の分岐（`--ui-testing` と `TARAREBA_TEST_*`）はすべて `#if DEBUG` の中にあり、Releaseビルドには入りません。UIテストは `TARAREBA_TEST_SESSION` ごとに `UserDefaults(suiteName:)` と保存先を分けるので、テスト間で入力値やキャッシュが混ざりません。
-- `accessibilityIdentifier` はUIテストとの契約です（`simulate` / `refresh-data` / `data-info` / `edit-input` / `input-error` / `comparison-difference` / `investment-plan` / `principal-summary` / `chart-principal` / `lump-sum-summary` / `fund-selection` / `fund-picker-done` / `fund-selection-error` / `date-range` / `date-adjustment` / `start-date-note` など）。選択シートの行、評価額と損益、損益率、いちばん沈んだとき、グラフの読み取り行、一括との比較の行は `fund-<商品ID>` / `valuation-<商品ID>` / `profit-<商品ID>` / `return-<商品ID>` / `deepest-loss-<商品ID>` / `chart-value-<商品ID>` / `lump-sum-<商品ID>` と商品IDから組み立てるため、商品IDを変えるとUIテストの参照先も変わります。
+- `accessibilityIdentifier` はUIテストとの契約です（`simulate` / `refresh-data` / `data-info` / `edit-input` / `input-error` / `comparison-difference` / `investment-plan` / `principal-summary` / `chart-principal` / `lump-sum-summary` / `fund-selection` / `fund-picker-done` / `fund-selection-error` / `hidden-funds` / `date-range` / `date-adjustment` / `start-date-note` など）。選択シートの行、評価額と損益、損益率、いちばん沈んだとき、グラフの読み取り行、一括との比較の行は `fund-<商品ID>` / `valuation-<商品ID>` / `profit-<商品ID>` / `return-<商品ID>` / `deepest-loss-<商品ID>` / `chart-value-<商品ID>` / `lump-sum-<商品ID>` と商品IDから組み立てるため、商品IDを変えるとUIテストの参照先も変わります。
 - コーディングスタイル（4スペース、型名とファイル名の一致、View型の `View` 接尾辞、MainActor前提）は `AGENTS.md` の該当節が現行の指針です。SwiftLint / SwiftFormatの設定はありません。
 
 ## 変更時に守ること
@@ -126,7 +134,8 @@ npm run dev                 # wrangler dev（public/ をローカル配信して
 - **アプリに価格データを同梱しない。** `ios/TararebaToushi/` 配下（`.xcassets` を除く）に `.json` / `.jsonc` / `.csv` があると `npm run validate` と `verify:app` が失敗します。テスト用フィクスチャはテストターゲット内、UIテストの応答はランナーの環境変数（`--ui-testing` + `TARAREBA_TEST_*`）で渡します。
 - **日々の更新はAPIのみ。** CSVを使うのは、保存済み履歴のない商品を設定来CSV（`fund_file/setteirai/<コード>.csv`・Shift_JIS）から1回だけ取り込むときに限ります。取り込み後は最終日と、等間隔に選んだ最大20日を日付指定APIと照合し、1件でも食い違えば書き込みません。既存商品の履歴をCSVで上書きする経路はありません。**再投資基準価額・税引前分配金は書式を検証するだけで保存しません。** 信託報酬の再控除もしません。
 - **既存の日付と値は書き換えない。** 補間・丸め直し・株価指数の接ぎ足しをせず、選択商品の共通観測日だけで計算します。
-- `DatasetValidator.supportsValueBasis` の `reinvestedIndex` 許可は、2026-09-07に通常基準価額と同値だと監査した版（`mufg-20260904-6c4cf880560d`）の**商品別ハッシュ一致時のみ**です。未確認の再投資系列を通常基準価額として扱ってはいけません。
+- 実データで計算に使う系列は `valueBasis: "nav"`（通常基準価額）だけです。再投資系列（`reinvestedIndex`）はサンプル専用で、実データとして扱ってはいけません。旧版キャッシュ向けの監査済み `reinvestedIndex` 許可と `navWithoutDistributions` は2026-09-28に削除しました。
+- 公開済みアプリとの互換は `docs/data-format.md` の「公開済みのアプリを壊さないために」に従います。アプリの `validateManifest` を厳しくする変更（商品単位で読み飛ばしていたものを一覧全体の拒否にするなど）は、今後の配信の自由を奪うので避けます。
 - 認証情報（`CLOUDFLARE_API_TOKEN` など）をiOSアプリ・`public/`・ソース・チャットに入れないこと。`.dev.vars*` / `.env*` はgitignore済み。
 - コミットメッセージは絵文字＋日本語の要約（例: `✨ オルカンとS&P500の同時比較に対応`、`♻️ …`、`🐛 …`、`🔧 …`）。
 

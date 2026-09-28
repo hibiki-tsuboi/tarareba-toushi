@@ -50,7 +50,8 @@ struct ContentView: View {
             .sheet(isPresented: $showsFundPicker) {
                 if let dataset = repository.dataset {
                     FundPickerView(
-                        funds: dataset.funds.map(\.descriptor),
+                        groups: FundGroup.grouping(dataset.funds.map(\.descriptor)),
+                        hiddenCount: dataset.hiddenFundCount,
                         selection: model.selectedIDs(in: dataset),
                         message: model.selectionMessage,
                         onToggle: { model.toggle($0, in: dataset) })

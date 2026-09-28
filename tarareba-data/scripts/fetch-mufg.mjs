@@ -7,38 +7,55 @@ import { day, validate, validateManifest } from './contract.mjs';
 
 // `page` is the official product page shown as the source. Not every product is on the
 // eMAXIS site, so it is stated per fund rather than derived from the fund code.
+// `shortName`, `summary` and `category` are what the app shows: the catalog, not the app,
+// says which products exist and what they are. The order is the app's order, so products
+// of a category stay together; the first two are selected on first launch.
+// Summaries keep to the fund's own classification: the two Neo funds are 内外, so they
+// are not called American.
 export const funds = [
     { id: 'all-country', code: '253425', associationCode: '0331418A', isin: 'JP90C000H1T1',
         name: 'eMAXIS Slim 全世界株式（オール・カントリー）', start: '2018-10-31',
+        shortName: 'オルカン', summary: '日本を含む世界中の株式', category: '株式',
         page: 'https://emaxis.am.mufg.jp/fund/253425.html' },
     { id: 'sp500', code: '253266', associationCode: '03311187', isin: 'JP90C000GKC6',
         name: 'eMAXIS Slim 米国株式（S&P500）', start: '2018-07-03',
+        shortName: 'S&P500', summary: '米国の代表的な大企業 約500社', category: '株式',
         page: 'https://emaxis.am.mufg.jp/fund/253266.html' },
     { id: 'topix', code: '252634', associationCode: '03317172', isin: 'JP90C000ENA9',
         name: 'ｅＭＡＸＩＳ Ｓｌｉｍ 国内株式（ＴＯＰＩＸ）', start: '2017-02-27',
+        shortName: 'TOPIX', summary: '日本の株式市場全体', category: '株式',
         page: 'https://emaxis.am.mufg.jp/fund/252634.html' },
     { id: 'nasdaq100', code: '254062', associationCode: '0331A211', isin: 'JP90C000L9D2',
         name: 'ｅＭＡＸＩＳ ＮＡＳＤＡＱ１００インデックス', start: '2021-01-29',
+        shortName: 'NASDAQ100', summary: 'ナスダック上場の大企業 約100社（ハイテク中心）', category: '株式',
         page: 'https://emaxis.am.mufg.jp/fund/254062.html' },
     { id: 'nikkei225', code: '253144', associationCode: '03311182', isin: 'JP90C000FXV1',
         name: 'ｅＭＡＸＩＳ Ｓｌｉｍ 国内株式（日経平均）', start: '2018-02-02',
+        shortName: '日経平均', summary: '日本を代表する225社', category: '株式',
         page: 'https://emaxis.am.mufg.jp/fund/253144.html' },
-    { id: 'gold', code: '251065', associationCode: '03311112', isin: 'JP90C0007G10',
-        name: '三菱ＵＦＪ 純金ファンド', start: '2011-02-07',
-        page: 'https://www.am.mufg.jp/fund/251065.html' },
     { id: 'emerging', code: '252878', associationCode: '0331C177', isin: 'JP90C000F7H5',
         name: 'ｅＭＡＸＩＳ Ｓｌｉｍ 新興国株式インデックス', start: '2017-07-31',
+        shortName: '新興国株', summary: '中国・インド・台湾などの新興国の株式', category: '株式',
         page: 'https://emaxis.am.mufg.jp/fund/252878.html' },
     { id: 'nanotech', code: '253477', associationCode: '0331218C', isin: 'JP90C000H662',
         name: 'ｅＭＡＸＩＳ Ｎｅｏ ナノテクノロジー', start: '2018-12-03',
+        shortName: 'ナノテク', summary: '国内外のナノテクノロジー関連企業', category: '株式',
         page: 'https://emaxis.am.mufg.jp/fund/253477.html' },
     { id: 'genomics', code: '253270', associationCode: '03311188', isin: 'JP90C000GR04',
         name: 'ｅＭＡＸＩＳ Ｎｅｏ 遺伝子工学', start: '2018-08-06',
+        shortName: '遺伝子工学', summary: '国内外の遺伝子工学関連企業', category: '株式',
         page: 'https://emaxis.am.mufg.jp/fund/253270.html' },
     { id: 'developed-bond', code: '252667', associationCode: '0331A172', isin: 'JP90C000END3',
         name: 'ｅＭＡＸＩＳ Ｓｌｉｍ 先進国債券インデックス（除く日本）', start: '2017-02-27',
-        page: 'https://emaxis.am.mufg.jp/fund/252667.html' }
+        shortName: '先進国債券', summary: '日本を除く先進国の国債', category: '債券',
+        page: 'https://emaxis.am.mufg.jp/fund/252667.html' },
+    { id: 'gold', code: '251065', associationCode: '03311112', isin: 'JP90C0007G10',
+        name: '三菱ＵＦＪ 純金ファンド', start: '2011-02-07',
+        shortName: '純金', summary: '金（ゴールド）', category: '金',
+        page: 'https://www.am.mufg.jp/fund/251065.html' }
 ];
+// Wording the provider's products need beside the data, shown by the app as delivered.
+export const notices = ['「オルカン」は三菱UFJアセットマネジメントの登録商標です。'];
 export const latestURL = fund => `https://developer.am.mufg.jp/fund_information_latest/association_fund_cd/${fund.associationCode}`;
 export const datedURL = (fund, date) => {
     day(date);
@@ -169,13 +186,17 @@ export function createSnapshot(histories, publishedAt = new Date().toISOString()
     for (const s of series) {
         s.datasetVersion = `fund-${createHash('sha256').update(JSON.stringify(s)).digest('hex')}`;
     }
+    const catalog = funds.map((fund, i) => ({ id: fund.id, displayName: fund.name, shortName: fund.shortName,
+        summary: fund.summary, category: fund.category, currency: 'JPY', valueBasis: 'nav',
+        path: `funds/${fund.id}.json`, contentVersion: series[i].datasetVersion,
+        firstDate: series[i].observations[0].date, lastDate: series[i].observations.at(-1).date }));
     const lastDate = series.map(s => s.observations.at(-1).date).sort().at(0);
-    const hash = createHash('sha256').update(JSON.stringify(series)).digest('hex').slice(0, 12);
+    // The edition covers what the catalog says as well as the histories, so renaming a
+    // product or changing a notice publishes a new edition instead of a silent change.
+    const hash = createHash('sha256').update(JSON.stringify({ series, catalog, notices })).digest('hex').slice(0, 12);
     const version = `mufg-${lastDate.replaceAll('-', '')}-${hash}`;
     const manifest = { schemaVersion: 2, datasetVersion: version, isSample: false, publishedAt,
-        funds: funds.map((fund, i) => ({ id: fund.id, displayName: fund.name, currency: 'JPY',
-            path: `funds/${fund.id}.json`, contentVersion: series[i].datasetVersion,
-            firstDate: series[i].observations[0].date, lastDate: series[i].observations.at(-1).date })) };
+        funds: catalog, notices: [...notices] };
     return validate({ manifest, series }, 'live');
 }
 

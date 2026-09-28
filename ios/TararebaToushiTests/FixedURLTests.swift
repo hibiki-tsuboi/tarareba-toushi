@@ -36,7 +36,7 @@ nonisolated enum FixedFixtures {
         let repo = repository(transport)
         await repo.start()
         #expect(repo.dataset?.snapshot == snapshot)
-        let live = DatasetMode.live.fundIDs
+        let live = Fixtures.ids(.live)
         #expect(await transport.requests.map(\.path)
             == ["/live/manifest.json"] + live.map { "/live/funds/\($0).json" })
         // An unchanged catalog costs one request; nothing is downloaded again.
@@ -59,30 +59,49 @@ nonisolated enum FixedFixtures {
         #expect(repo.fetchedAt == now)
     }
 
-    @Test func hundredFundCatalogDownloadsOnlySupportedProducts() async throws {
+    @Test func hundredFundCatalogDownloadsOnlyTheProductsThisVersionOffers() async throws {
         var snapshot = try FixedFixtures.snapshot()
-        for index in DatasetMode.live.fundIDs.count..<100 {
+        for index in snapshot.manifest.funds.count..<100 {
             var fund = snapshot.manifest.funds[0]
             fund.id = "additional-\(index)"
             fund.displayName = "追加商品\(index)"
+            fund.shortName = "追加\(index)"
             fund.path = "funds/\(fund.id).json"
             snapshot.manifest.funds.append(fund)
+            var series = snapshot.series[0]
+            series.fundId = fund.id
+            snapshot.series.append(series)
         }
         let transport = MockTransport(try Fixtures.responses(snapshot))
         let repo = repository(transport)
         await repo.start()
-        let live = DatasetMode.live.fundIDs
+        let offered = AppConfiguration.maximumCatalogFunds
         #expect(repo.dataset?.snapshot.manifest.funds.count == 100)
-        #expect(repo.dataset?.funds.count == live.count)
-        #expect(await transport.count == live.count + 1)
+        #expect(repo.dataset?.funds.map(\.descriptor.id) == snapshot.manifest.funds.prefix(offered).map(\.id))
+        #expect(repo.dataset?.hiddenFundCount == 100 - offered)
+        #expect(await transport.count == offered + 1)
+        // A change to a product past the limit downloads nothing.
         let fetchedAt = repo.fetchedAt
         snapshot.manifest.datasetVersion = "catalog-v2"
         snapshot.manifest.funds[99].contentVersion = "fund-" + String(repeating: "f", count: 64)
         await transport.set(try Fixtures.responses(snapshot))
         await repo.refresh(force: true)
-        #expect(await transport.count == live.count + 2)
+        #expect(await transport.count == offered + 2)
         #expect(repo.dataset?.snapshot.manifest == snapshot.manifest)
         #expect(repo.fetchedAt == fetchedAt)
+    }
+
+    @Test func aKindOfProductThisVersionCannotComputeIsNeverDownloaded() async throws {
+        var snapshot = try FixedFixtures.snapshot()
+        snapshot.manifest.funds[2].valueBasis = "price"
+        snapshot.series[2].valueBasis = "price"
+        let transport = MockTransport(try Fixtures.responses(snapshot))
+        let repo = repository(transport)
+        await repo.start()
+        #expect(repo.dataset?.hiddenFundCount == 1)
+        #expect(repo.dataset?.funds.contains { $0.descriptor.id == "topix" } == false)
+        #expect(await transport.requests.map(\.path).contains("/live/funds/topix.json") == false)
+        #expect(await transport.count == Fixtures.ids(.live).count)
     }
 
     @Test func staleHistoryAtFixedURLRetriesAndNeverReplacesValidCache() async throws {
@@ -135,7 +154,7 @@ nonisolated enum FixedFixtures {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
         let config = AppConfiguration()
-        #expect(config.cacheIdentity.hasSuffix("|schema-1"))
+        #expect(config.cacheIdentity.hasSuffix("|schema-2"))
         let store = LocalSnapshotStore(directory: directory, configuration: config)
         let legacy = Fixtures.snapshot(version: "legacy-live", mode: .live)
         try await store.save(Fixtures.envelope(legacy))
@@ -153,13 +172,23 @@ nonisolated enum FixedFixtures {
         #expect(offline.dataset?.snapshot == next)
     }
 
-    @Test func missingOrUnsafeContentInformationIsRejectedBeforeAnyHistoryRequest() async throws {
+    @Test func anUnknownFormatIsRejectedBeforeAnyHistoryRequest() async throws {
+        var snapshot = try FixedFixtures.snapshot()
+        snapshot.manifest.schemaVersion = 3
+        let transport = MockTransport(try Fixtures.responses(snapshot))
+        let repo = repository(transport)
+        await repo.start()
+        #expect(await transport.count == 1)
+        #expect(repo.dataset == nil)
+        #expect(repo.message != nil)
+    }
+
+    @Test func missingOrUnsafeContentInformationLeavesOnlyThatProductOut() async throws {
         let mutations: [(inout DatasetSnapshot) -> Void] = [
             { $0.manifest.funds[0].contentVersion = nil },
             { $0.manifest.funds[0].contentVersion = "invalid" },
             { $0.manifest.funds[0].path = "funds/all-country.old.json" },
             { $0.manifest.funds[0].id = "../private" },
-            { $0.manifest.schemaVersion = 3 },
         ]
         for mutate in mutations {
             var snapshot = try FixedFixtures.snapshot()
@@ -167,9 +196,11 @@ nonisolated enum FixedFixtures {
             let transport = MockTransport(try Fixtures.responses(snapshot))
             let repo = repository(transport)
             await repo.start()
-            #expect(await transport.count == 1)
-            #expect(repo.dataset == nil)
-            #expect(repo.message != nil)
+            // Its path is never requested; the others load as usual.
+            #expect(await transport.requests.map(\.path).contains { $0.contains("all-country") || $0.contains("private") } == false)
+            #expect(await transport.count == Fixtures.ids(.live).count)
+            #expect(repo.dataset?.funds.first?.descriptor.id == "sp500")
+            #expect(repo.dataset?.hiddenFundCount == 1)
         }
     }
 }

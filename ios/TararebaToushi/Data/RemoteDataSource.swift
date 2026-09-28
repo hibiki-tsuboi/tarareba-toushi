@@ -95,18 +95,16 @@ nonisolated struct RemoteDataSource: Sendable {
 
     @concurrent func dataset(manifest: Manifest, reusing cached: DatasetSnapshot? = nil) async throws -> ValidatedDataset {
         // Validate again at the boundary before using any path from a remote manifest.
-        try DatasetValidator.validateManifest(manifest, mode: configuration.mode)
+        // Only the products this version offers are downloaded.
+        let usable = try DatasetValidator.validateManifest(manifest, mode: configuration.mode)
         guard let base = configuration.manifestURL?.deletingLastPathComponent() else {
             throw DataIssue("配信先の設定が正しくありません。")
         }
         var series: [FundSeries] = []
-        for id in configuration.mode.fundIDs {
-            guard let fund = manifest.funds.first(where: { $0.id == id }) else {
-                throw DataIssue("必要な商品がデータ一覧にありません。")
-            }
+        for fund in usable {
             if manifest.schemaVersion == 2, cached?.manifest.schemaVersion == 2,
-                cached?.manifest.funds.first(where: { $0.id == id }) == fund,
-                let saved = cached?.series.first(where: { $0.fundId == id }) {
+                cached?.manifest.funds.first(where: { $0.id == fund.id }) == fund,
+                let saved = cached?.series.first(where: { $0.fundId == fund.id }) {
                 series.append(saved)
                 continue
             }

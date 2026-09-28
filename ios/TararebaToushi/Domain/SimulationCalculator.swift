@@ -67,6 +67,8 @@ nonisolated struct SimulationResult: Sendable {
     // Common days, so every fund buys on the same days. A lump sum buys once, on the start day.
     let purchaseDays: [TradingDay]
     let funds: [FundResult]
+    // The providers of the selected funds' values, each once.
+    let sourceNames: [String]
     // Signed, and only meaningful for exactly two funds: funds[1] - funds[0].
     let displayedDifference: Decimal
 
@@ -183,7 +185,7 @@ nonisolated enum SimulationCalculator {
         return SimulationResult(
             isSample: dataset.snapshot.manifest.isSample,
             input: input, requestedDate: requested, startDate: start, endDate: end,
-            purchaseDays: purchases, funds: results,
+            purchaseDays: purchases, funds: results, sourceNames: ValidatedDataset.sourceNames(of: selected),
             displayedDifference: results.count == 2
                 ? results[1].displayedValuation - results[0].displayedValuation : 0)
     }

@@ -105,14 +105,16 @@ import Testing
         #expect(await transport.count == Fixtures.requests())
     }
 
-    @Test func unsafePathStopsBeforeSeriesRequest() async throws {
+    @Test func unsafePathIsNeverRequested() async throws {
         var snapshot = Fixtures.snapshot(version: "sample-v2")
         snapshot.manifest.funds[0].path = "https://evil.example/private.json"
-        let transport = MockTransport(["/sample/manifest.json": try JSONEncoder().encode(snapshot.manifest)])
+        let transport = MockTransport(try Fixtures.responses(snapshot))
         let repo = repository(transport: transport)
         await repo.start()
-        #expect(await transport.count == 1)
-        #expect(repo.message != nil)
+        #expect(await transport.requests.allSatisfy { $0.host == "tarareba-data.hibiki-apps.workers.dev" })
+        #expect(await transport.requests.map(\.path).contains("/private.json") == false)
+        #expect(await transport.count == Fixtures.requests() - 1)
+        #expect(repo.dataset?.hiddenFundCount == 1)
     }
 
     @Test func fileStoreRoundTripAndOriginIsolation() async throws {

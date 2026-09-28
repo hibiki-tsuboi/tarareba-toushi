@@ -3,13 +3,22 @@ import Foundation
 @testable import TararebaToushi
 
 nonisolated enum Fixtures {
+    // The catalog these fixtures deliver. The app itself no longer knows any product.
+    static func ids(_ mode: DatasetMode = .sample) -> [String] {
+        let ids = [
+            "all-country", "sp500", "topix", "nasdaq100", "nikkei225", "gold", "emerging", "nanotech", "genomics",
+            "developed-bond",
+        ]
+        return mode == .sample ? ids.map { "demo-\($0)" } : ids
+    }
+
     // Final values per fund, in delivered order. Extra funds reuse the last value.
     static func snapshot(
         version: String = "sample-v1", a: String = "12000", b: String = "14000", c: String = "13000",
         d: String = "16000", e: String = "15000", f: String = "17000", g: String = "18000",
         h: String = "19000", i: String = "20000", j: String = "21000", mode: DatasetMode = .sample
     ) -> DatasetSnapshot {
-        let ids = mode.fundIDs
+        let ids = ids(mode)
         let finals = [a, b, c, d, e, f, g, h, i, j]
         let names = [
             "オルカン", "S&P500", "TOPIX", "NASDAQ100", "日経平均", "純金", "新興国株", "ナノテク", "遺伝子工学",
@@ -18,9 +27,11 @@ nonisolated enum Fixtures {
         let dates = ["2024-12-30", "2025-01-06", "2026-09-04"]
         let funds = ids.enumerated()
             .map { i, id in
-                FundDescriptor(
-                    id: id, displayName: names[i] + (mode == .sample ? "（サンプル）" : ""),
-                    currency: "JPY", path: "funds/\(id).\(version).json", firstDate: dates[0], lastDate: dates[2])
+                let name = names[i] + (mode == .sample ? "（サンプル）" : "")
+                return FundDescriptor(
+                    id: id, displayName: name, shortName: name, summary: "テスト用の架空の商品",
+                    currency: "JPY", valueBasis: mode == .sample ? "reinvestedIndex" : "nav",
+                    path: "funds/\(id).\(version).json", firstDate: dates[0], lastDate: dates[2])
             }
         let manifest = Manifest(
             schemaVersion: 1, datasetVersion: version, isSample: mode == .sample,
@@ -43,12 +54,12 @@ nonisolated enum Fixtures {
         try DatasetValidator.validate(snapshot, mode: .sample)
     }
 
-    // The validator still pins live data to the two delivered funds, so multi-fund
-    // datasets are assembled directly to exercise the domain at N funds.
+    // Assembled directly, so the domain can be exercised with histories of any shape.
     static func dataset(_ funds: [(id: String, dates: [String], values: [String])]) throws -> ValidatedDataset {
         let validated = try funds.map { fund in
             let descriptor = FundDescriptor(
-                id: fund.id, displayName: fund.id, currency: "JPY", path: "funds/\(fund.id).json",
+                id: fund.id, displayName: fund.id, shortName: fund.id, summary: "テスト用の架空の商品",
+                currency: "JPY", valueBasis: "nav", path: "funds/\(fund.id).json",
                 firstDate: fund.dates[0], lastDate: fund.dates[fund.dates.count - 1])
             let series = FundSeries(
                 schemaVersion: 2, datasetVersion: "fund-test", isSample: false, fundId: fund.id,
@@ -84,7 +95,7 @@ nonisolated enum Fixtures {
     }
 
     // A full update is the catalog plus one history per delivered fund.
-    static func requests(_ mode: DatasetMode = .sample) -> Int { mode.fundIDs.count + 1 }
+    static func requests(_ mode: DatasetMode = .sample) -> Int { ids(mode).count + 1 }
 
     static func envelope(_ snapshot: DatasetSnapshot = snapshot(), checkedAt: Date? = nil) -> StoredSnapshot {
         StoredSnapshot(

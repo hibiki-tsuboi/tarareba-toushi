@@ -46,11 +46,20 @@ export function generate({ start = '2020-01-06', end = '2026-09-07', seed = 42, 
         '日経平均（サンプル）', '純金（サンプル）', '新興国株（サンプル）', 'ナノテク（サンプル）',
         '遺伝子工学（サンプル）', '先進国債券（サンプル）',
     ];
+    const summaries = [
+        '日本を含む世界中の株式', '米国の代表的な大企業 約500社', '日本の株式市場全体',
+        'ナスダック上場の大企業 約100社（ハイテク中心）', '日本を代表する225社', '金（ゴールド）',
+        '中国・インド・台湾などの新興国の株式', '国内外のナノテクノロジー関連企業', '国内外の遺伝子工学関連企業',
+        '日本を除く先進国の国債',
+    ];
+    // No categories: the sample keeps the order its series were generated in.
     const manifest = {
         schemaVersion: 1, datasetVersion: version, isSample: true,
         publishedAt: `${end}T00:00:00Z`,
-        funds: ids.map((id, i) => ({ id, displayName: names[i], currency: 'JPY',
-            path: `funds/${id}.${version}.json`, firstDate: observations[i][0].date, lastDate: observations[i].at(-1).date }))
+        funds: ids.map((id, i) => ({ id, displayName: names[i], shortName: names[i], summary: summaries[i],
+            currency: 'JPY', valueBasis: 'reinvestedIndex', path: `funds/${id}.${version}.json`,
+            firstDate: observations[i][0].date, lastDate: observations[i].at(-1).date })),
+        notices: []
     };
     const series = ids.map((fundId, i) => ({ schemaVersion: 1, datasetVersion: version, isSample: true,
         fundId, currency: 'JPY', valueBasis: 'reinvestedIndex',

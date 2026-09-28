@@ -38,7 +38,7 @@ actor LocalSnapshotStore: SnapshotStore {
     func load() throws -> StoredSnapshot? {
         guard FileManager.default.fileExists(atPath: file.path) else { return nil }
         let size = try file.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
-        guard size <= 6 * 1024 * 1024 else { throw DataIssue("保存データが大きすぎます。") }
+        guard size <= AppConfiguration.maximumStoredBytes else { throw DataIssue("保存データが大きすぎます。") }
         let stored = try JSONDecoder().decode(StoredSnapshot.self, from: Data(contentsOf: file))
         guard stored.identity == identity else { throw DataIssue("保存データの配信元が一致しません。") }
         guard stored.origin == .remote, stored.fetchedAt != nil else { return nil }
@@ -56,7 +56,7 @@ actor LocalSnapshotStore: SnapshotStore {
         flags.isExcludedFromBackup = true
         try folder.setResourceValues(flags)
         let bytes = try JSONEncoder().encode(value)
-        // One validated envelope; atomic replacement keeps both funds consistent with the saved catalog.
+        // One validated envelope; atomic replacement keeps every fund consistent with the saved catalog.
         try bytes.write(to: file, options: .atomic)
     }
 }
