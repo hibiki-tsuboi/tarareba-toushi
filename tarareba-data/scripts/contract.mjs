@@ -16,7 +16,10 @@ export function day(value) {
 
 // Stricter than the app, which leaves out a product it cannot offer instead of failing:
 // everything published here must be something the current app can offer.
-export function validateManifest(m, mode = 'sample') {
+// A published edition was valid under the rules of its day. Reading one back with
+// `catalog: false` checks only what keeps the requests safe and the histories comparable;
+// the catalog rules apply to what is about to be published.
+export function validateManifest(m, mode = 'sample', { catalog = true } = {}) {
     assert(['sample', 'live'].includes(mode));
     const isSample = mode === 'sample';
     assert(isSample ? m.schemaVersion === 1 : [1, 2].includes(m.schemaVersion));
@@ -27,17 +30,21 @@ export function validateManifest(m, mode = 'sample') {
     assert(Number.isFinite(Date.parse(m.publishedAt)));
     assert.equal(new Date(m.publishedAt).toISOString().replace('.000Z', 'Z'), m.publishedAt);
     assert(Array.isArray(m.funds) && m.funds.length > 0, '商品がありません');
-    assert(m.funds.length <= maximumCatalogFunds, `アプリが扱える商品は${maximumCatalogFunds}までです`);
+    assert(m.funds.length <= (catalog ? maximumCatalogFunds : 1000), `アプリが扱える商品は${maximumCatalogFunds}までです`);
     assert.equal(new Set(m.funds.map(f => f.id)).size, m.funds.length);
-    assert(Array.isArray(m.notices) && m.notices.length <= 10 && m.notices.every(n => text(n, 200)), '表記が不正です');
+    if (catalog) {
+        assert(Array.isArray(m.notices) && m.notices.length <= 10 && m.notices.every(n => text(n, 200)), '表記が不正です');
+    }
     for (const f of m.funds) {
         assert.equal(f.currency, 'JPY');
-        assert.equal(f.valueBasis, isSample ? 'reinvestedIndex' : 'nav');
         assert(text(f.displayName, 80), '商品名が不正です');
-        assert(text(f.shortName, 20), '短い商品名が不正です');
-        assert(text(f.summary, 60), '商品の説明が不正です');
-        assert(f.category === undefined || text(f.category, 20), '商品の分類が不正です');
-        for (const name of [f.displayName, f.shortName]) {
+        if (catalog) {
+            assert.equal(f.valueBasis, isSample ? 'reinvestedIndex' : 'nav');
+            assert(text(f.shortName, 20), '短い商品名が不正です');
+            assert(text(f.summary, 60), '商品の説明が不正です');
+            assert(f.category === undefined || text(f.category, 20), '商品の分類が不正です');
+        }
+        for (const name of [f.displayName, f.shortName].filter(name => name !== undefined)) {
             assert(isSample ? name.includes('サンプル') : !name.includes('サンプル'));
         }
         assert.match(f.id, /^[a-z0-9][a-z0-9-]{0,63}$/);
@@ -56,8 +63,8 @@ export function validateManifest(m, mode = 'sample') {
     return m;
 }
 
-export function validate(snapshot, mode = 'sample') {
-    const m = validateManifest(snapshot.manifest, mode);
+export function validate(snapshot, mode = 'sample', options = {}) {
+    const m = validateManifest(snapshot.manifest, mode, options);
     const isSample = mode === 'sample';
     const expectedIDs = m.funds.map(f => f.id);
     assert.equal(snapshot.series.length, expectedIDs.length);
@@ -69,7 +76,8 @@ export function validate(snapshot, mode = 'sample') {
         assert.equal(s.isSample, isSample);
         assert.equal(s.datasetVersion, m.schemaVersion === 2 ? f.contentVersion : m.datasetVersion);
         assert.equal(s.currency, 'JPY');
-        assert.equal(s.valueBasis, f.valueBasis);
+        // An edition from before the catalog rules states the kind in its histories only.
+        assert.equal(s.valueBasis, f.valueBasis ?? (isSample ? 'reinvestedIndex' : 'nav'));
         assert.equal(s.source.kind, isSample ? 'synthetic' : 'official');
         assert(s.source.name && s.source.note);
         if (!isSample) {

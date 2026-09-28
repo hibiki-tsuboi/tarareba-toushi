@@ -41,15 +41,16 @@ async function readPublishedSnapshot(fetcher) {
     let manifest;
     try { manifest = await download('manifest.json'); }
     catch (error) { if (error instanceof MissingManifest) return null; throw error; }
-    // Validate paths before making any history requests.
-    validateManifest(manifest, 'live');
+    // Validate paths before making any history requests. The published edition may predate
+    // the current catalog rules; those apply to the local edition about to replace it.
+    validateManifest(manifest, 'live', { catalog: false });
     const series = [];
     for (const fund of manifest.funds) {
         const history = await download(fund.path);
         if (manifest.schemaVersion === 2 && history.datasetVersion !== fund.contentVersion) throw new PublicationChanged();
         series.push(history);
     }
-    return validate({ manifest, series }, 'live');
+    return validate({ manifest, series }, 'live', { catalog: false });
 }
 
 export async function publicationStatus(directory = root, fetcher = fetch) {

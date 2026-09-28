@@ -164,3 +164,29 @@ test('persistent mixed fixed-URL contents fail verification instead of skipping 
     await assert.rejects(publicationStatus(directory, remote.fetch), /更新情報が一致しません/);
     assert.equal(remote.requests.filter(path => path === 'manifest.json').length, 2);
 });
+
+// The shape published before the catalog carried names, summaries, kinds and notices.
+function previousCatalog(data) {
+    const old = structuredClone(data);
+    old.manifest.datasetVersion = 'mufg-20250107-000000000000';
+    delete old.manifest.notices;
+    for (const f of old.manifest.funds) {
+        for (const key of ['shortName', 'summary', 'category', 'valueBasis']) delete f[key];
+    }
+    return old;
+}
+
+test('an edition published before the catalog rules is read back and replaced', async t => {
+    const data = snapshot();
+    const directory = await folder(t, data);
+    const old = previousCatalog(data);
+    assert.equal((await publicationStatus(directory, server(old).fetch)).needsDeploy, true);
+    await assert.rejects(verifyPublication(directory, server(old).fetch), /一致しません/);
+    // It still may not be replaced by a shorter history, nor lead to an unsafe request.
+    await assert.rejects(publicationStatus(directory, server(previousCatalog(snapshot('2025-01-08'))).fetch), /短いデータ/);
+    const unsafe = previousCatalog(data);
+    unsafe.manifest.funds[0].path = '../../secret.json';
+    const remote = server(unsafe);
+    await assert.rejects(publicationStatus(directory, remote.fetch));
+    assert.deepEqual(remote.requests, ['manifest.json']);
+});
