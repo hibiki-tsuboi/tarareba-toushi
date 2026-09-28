@@ -45,7 +45,7 @@ import Testing
             (id: "fund-a", dates: dates, values: ["10000", "11000", "5000", "20000", "12000"])
         ])
         let monthly = try SimulationCalculator.calculate(
-            .init(amount: 10_000, requestedDate: "2025-01-06", plan: .monthly), dataset: dataset)
+            .init(amount: 10_000, requestedDate: "2025-01-06", fundIDs: dataset.defaultSelection, plan: .monthly), dataset: dataset)
         let steps = ValuationChartView.principalSteps(monthly)
         // Every rise shares its date with the level before it, and the last level runs to the end.
         #expect(steps.map(\.day.rawValue)
@@ -54,12 +54,12 @@ import Testing
 
         // Instalments that land on one day make a single rise.
         let together = try SimulationCalculator.calculate(
-            .init(amount: 30_000, requestedDate: "2025-01-01", plan: .monthly), dataset: Fixtures.validated())
+            .init(amount: 30_000, requestedDate: "2025-01-01", fundIDs: Fixtures.validated().defaultSelection, plan: .monthly), dataset: Fixtures.validated())
         #expect(ValuationChartView.principalSteps(together).map(\.amount) == [30_000, 30_000, 630_000])
 
         // A principal that never changes is drawn as a rule instead.
         let lumpSum = try SimulationCalculator.calculate(
-            .init(amount: 10_000, requestedDate: "2025-01-06"), dataset: dataset)
+            .init(amount: 10_000, requestedDate: "2025-01-06", fundIDs: dataset.defaultSelection), dataset: dataset)
         #expect(ValuationChartView.principalSteps(lumpSum).isEmpty)
     }
 }

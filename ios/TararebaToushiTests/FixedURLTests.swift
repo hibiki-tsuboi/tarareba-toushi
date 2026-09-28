@@ -1,26 +1,7 @@
-import CryptoKit
 import Foundation
 import Testing
 
 @testable import TararebaToushi
-
-nonisolated enum FixedFixtures {
-    static func snapshot(version: String = "catalog-v1", a: String = "12000", b: String = "14000") throws -> DatasetSnapshot {
-        var snapshot = Fixtures.snapshot(version: version, a: a, b: b, mode: .live)
-        snapshot.manifest.schemaVersion = 2
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.sortedKeys]
-        for index in snapshot.series.indices {
-            snapshot.series[index].schemaVersion = 2
-            snapshot.series[index].datasetVersion = ""
-            let hash = SHA256.hash(data: try encoder.encode(snapshot.series[index])).map { String(format: "%02x", $0) }.joined()
-            snapshot.series[index].datasetVersion = "fund-\(hash)"
-            snapshot.manifest.funds[index].contentVersion = snapshot.series[index].datasetVersion
-            snapshot.manifest.funds[index].path = "funds/\(snapshot.series[index].fundId).json"
-        }
-        return snapshot
-    }
-}
 
 @MainActor struct FixedURLTests {
     private let now = Date(timeIntervalSince1970: 10_000)
@@ -31,7 +12,7 @@ nonisolated enum FixedFixtures {
     }
 
     @Test func downloadsFixedPathsAndUnchangedRefreshOnlyChecksCatalog() async throws {
-        let snapshot = try FixedFixtures.snapshot()
+        let snapshot = Fixtures.snapshot(mode: .live)
         let transport = MockTransport(try Fixtures.responses(snapshot))
         let repo = repository(transport)
         await repo.start()
@@ -47,8 +28,8 @@ nonisolated enum FixedFixtures {
     }
 
     @Test func correctionOnSameDateDownloadsOnlyChangedFundAndKeepsOtherSeries() async throws {
-        let old = try FixedFixtures.snapshot()
-        let next = try FixedFixtures.snapshot(version: "catalog-v2", a: "11000")
+        let old = Fixtures.snapshot(mode: .live)
+        let next = Fixtures.snapshot(version: "catalog-v2", a: "11000", mode: .live)
         let transport = MockTransport(try Fixtures.responses(next))
         let store = MemoryStore(Fixtures.envelope(old))
         let repo = repository(transport, store)
@@ -60,7 +41,7 @@ nonisolated enum FixedFixtures {
     }
 
     @Test func hundredFundCatalogDownloadsOnlyTheProductsThisVersionOffers() async throws {
-        var snapshot = try FixedFixtures.snapshot()
+        var snapshot = Fixtures.snapshot(mode: .live)
         for index in snapshot.manifest.funds.count..<100 {
             var fund = snapshot.manifest.funds[0]
             fund.id = "additional-\(index)"
@@ -92,7 +73,7 @@ nonisolated enum FixedFixtures {
     }
 
     @Test func aKindOfProductThisVersionCannotComputeIsNeverDownloaded() async throws {
-        var snapshot = try FixedFixtures.snapshot()
+        var snapshot = Fixtures.snapshot(mode: .live)
         snapshot.manifest.funds[2].valueBasis = "price"
         snapshot.series[2].valueBasis = "price"
         let transport = MockTransport(try Fixtures.responses(snapshot))
@@ -105,8 +86,8 @@ nonisolated enum FixedFixtures {
     }
 
     @Test func staleHistoryAtFixedURLRetriesAndNeverReplacesValidCache() async throws {
-        let old = try FixedFixtures.snapshot()
-        var next = try FixedFixtures.snapshot(version: "catalog-v2", a: "11000")
+        let old = Fixtures.snapshot(mode: .live)
+        var next = Fixtures.snapshot(version: "catalog-v2", a: "11000", mode: .live)
         next.series[0] = old.series[0]
         let transport = MockTransport(try Fixtures.responses(next))
         let store = MemoryStore(Fixtures.envelope(old))
@@ -117,15 +98,15 @@ nonisolated enum FixedFixtures {
         #expect(await store.value?.snapshot == old)
         #expect(repo.checkedAt == nil)
         #expect(repo.message?.contains("切り替わっています") == true)
-        let corrected = try FixedFixtures.snapshot(version: "catalog-v2", a: "11000")
+        let corrected = Fixtures.snapshot(version: "catalog-v2", a: "11000", mode: .live)
         await transport.set(try Fixtures.responses(corrected))
         await repo.refresh(force: true)
         #expect(repo.dataset?.snapshot == corrected)
     }
 
     @Test func deploymentBetweenCatalogAndHistoryRequestsRecoversAutomatically() async throws {
-        let old = try FixedFixtures.snapshot()
-        let next = try FixedFixtures.snapshot(version: "catalog-v2", a: "11000", b: "13000")
+        let old = Fixtures.snapshot(mode: .live)
+        let next = Fixtures.snapshot(version: "catalog-v2", a: "11000", b: "13000", mode: .live)
         let transport = SwitchingCatalogTransport(first: try JSONEncoder().encode(old.manifest), responses: try Fixtures.responses(next))
         let repo = repository(transport)
         await repo.start()
@@ -135,8 +116,8 @@ nonisolated enum FixedFixtures {
     }
 
     @Test func partialOrDiskFailureKeepsPreviousSnapshot() async throws {
-        let old = try FixedFixtures.snapshot()
-        let next = try FixedFixtures.snapshot(version: "catalog-v2", a: "11000", b: "13000")
+        let old = Fixtures.snapshot(mode: .live)
+        let next = Fixtures.snapshot(version: "catalog-v2", a: "11000", b: "13000", mode: .live)
         for failSave in [false, true] {
             var responses = try Fixtures.responses(next)
             if !failSave { responses.removeValue(forKey: "/live/funds/sp500.json") }
@@ -150,30 +131,28 @@ nonisolated enum FixedFixtures {
         }
     }
 
-    @Test func legacyDiskCacheSurvivesOfflineAndMigratesToFixedURLs() async throws {
+    @Test func downloadedSnapshotOnDiskServesAnOfflineLaunch() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
-        let config = AppConfiguration()
-        #expect(config.cacheIdentity.hasSuffix("|schema-2"))
-        let store = LocalSnapshotStore(directory: directory, configuration: config)
-        let legacy = Fixtures.snapshot(version: "legacy-live", mode: .live)
-        try await store.save(Fixtures.envelope(legacy))
-        let transport = MockTransport()
-        let repo = repository(transport, store)
-        await repo.start()
-        #expect(repo.dataset?.snapshot == legacy)
-        let next = try FixedFixtures.snapshot()
-        await transport.set(try Fixtures.responses(next))
-        await repo.refresh(force: true)
-        #expect(repo.dataset?.snapshot == next)
-        #expect(try await store.load()?.snapshot == next)
+        let store = LocalSnapshotStore(directory: directory, configuration: AppConfiguration())
+        let snapshot = Fixtures.snapshot(mode: .live)
+        let online = repository(MockTransport(try Fixtures.responses(snapshot)), store)
+        await online.start()
+        #expect(try await store.load()?.snapshot == snapshot)
         let offline = repository(MockTransport(), store)
         await offline.start()
-        #expect(offline.dataset?.snapshot == next)
+        #expect(offline.dataset?.snapshot == snapshot)
+        #expect(offline.fetchedAt == now)
+    }
+
+    @Test func theVersionedFormatIsTheSampleOnly() async throws {
+        var snapshot = Fixtures.snapshot(mode: .live)
+        snapshot.manifest.schemaVersion = 1
+        #expect(throws: DataIssue.self) { try DatasetValidator.validateManifest(snapshot.manifest, mode: .live) }
     }
 
     @Test func anUnknownFormatIsRejectedBeforeAnyHistoryRequest() async throws {
-        var snapshot = try FixedFixtures.snapshot()
+        var snapshot = Fixtures.snapshot(mode: .live)
         snapshot.manifest.schemaVersion = 3
         let transport = MockTransport(try Fixtures.responses(snapshot))
         let repo = repository(transport)
@@ -191,7 +170,7 @@ nonisolated enum FixedFixtures {
             { $0.manifest.funds[0].id = "../private" },
         ]
         for mutate in mutations {
-            var snapshot = try FixedFixtures.snapshot()
+            var snapshot = Fixtures.snapshot(mode: .live)
             mutate(&snapshot)
             let transport = MockTransport(try Fixtures.responses(snapshot))
             let repo = repository(transport)

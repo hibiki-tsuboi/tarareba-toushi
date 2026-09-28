@@ -499,31 +499,6 @@ test('only the changed fund gets new content and the fixed file count stays cons
         funds.map(f => `${f.id}.json`).sort());
 });
 
-test('migration from versioned URLs preserves every date and value and subsequent writes stay fixed', async t => {
-    const root = await folder(t, null);
-    const legacy = createSnapshot(histories());
-    legacy.manifest.schemaVersion = 1;
-    legacy.manifest.datasetVersion = 'legacy-live';
-    for (const fund of legacy.manifest.funds) {
-        delete fund.contentVersion;
-        fund.path = `funds/${fund.id}.legacy-live.json`;
-    }
-    for (const series of legacy.series) {
-        series.schemaVersion = 1;
-        series.datasetVersion = 'legacy-live';
-    }
-    await writeSnapshot(legacy, root);
-    const next = await writeSnapshot(createSnapshot(histories()), root);
-    assert.deepEqual(next.series.map(s => s.observations), legacy.series.map(s => s.observations));
-    for (const fund of legacy.manifest.funds) {
-        assert.deepEqual(JSON.parse(await readFile(resolve(root, 'public/live', fund.path), 'utf8')),
-            legacy.series.find(s => s.fundId === fund.id));
-    }
-    const files = await readdir(resolve(root, 'public/live/funds'));
-    await updateFromMufg(root, server('2025-01-08').fetch, options);
-    assert.deepEqual(await readdir(resolve(root, 'public/live/funds')), files);
-});
-
 test('the catalog decides the products, within what the app offers', () => {
     const snapshot = createSnapshot(histories());
     const extend = (data, count) => {

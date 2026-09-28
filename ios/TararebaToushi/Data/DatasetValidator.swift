@@ -9,9 +9,8 @@ nonisolated enum DatasetValidator {
     // working beside them. Only a catalog that is unusable as a whole is rejected.
     @discardableResult
     static func validateManifest(_ manifest: Manifest, mode: DatasetMode) throws -> [FundDescriptor] {
-        guard [1, AppConfiguration.schemaVersion].contains(manifest.schemaVersion),
-            mode == .live || manifest.schemaVersion == 1
-        else {
+        // Live data is the fixed-URL format; the sample keeps its versioned files.
+        guard manifest.schemaVersion == (mode == .sample ? 1 : AppConfiguration.schemaVersion) else {
             throw DataIssue("未対応のデータ形式です。アプリの更新が必要な可能性があります。")
         }
         guard manifest.isSample == (mode == .sample) else { throw DataIssue("データのモードが一致しません。") }

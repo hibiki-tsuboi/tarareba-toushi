@@ -26,7 +26,7 @@ struct SimulationTests {
 
     @Test func expectedReturnsAndDifference() throws {
         let result = try SimulationCalculator.calculate(
-            .init(amount: 1_000_000, requestedDate: "2025-01-01"), dataset: Fixtures.validated())
+            .init(amount: 1_000_000, requestedDate: "2025-01-01", fundIDs: Fixtures.validated().defaultSelection), dataset: Fixtures.validated())
         #expect(result.startDate.rawValue == "2025-01-06")
         #expect(result.funds[0].valuation == 1_200_000)
         #expect(result.funds[0].profit == 200_000)
@@ -36,7 +36,7 @@ struct SimulationTests {
         #expect(result.displayedDifference == 200_000)
         #expect(result.funds.allSatisfy { $0.points.first?.amount == 1_000_000 })
         let doubled = try SimulationCalculator.calculate(
-            .init(amount: 2_000_000, requestedDate: "2025-01-01"), dataset: Fixtures.validated())
+            .init(amount: 2_000_000, requestedDate: "2025-01-01", fundIDs: Fixtures.validated().defaultSelection), dataset: Fixtures.validated())
         #expect(doubled.funds[0].valuation == result.funds[0].valuation * 2)
         #expect(doubled.displayedDifference == result.displayedDifference * 2)
         #expect(doubled.funds[1].returnPercent == result.funds[1].returnPercent)
@@ -45,13 +45,13 @@ struct SimulationTests {
     @Test func lossesFlatAndOnePoint() throws {
         let dataset = try Fixtures.validated(Fixtures.snapshot(a: "8000", b: "10000"))
         let result = try SimulationCalculator.calculate(
-            .init(amount: 1_000_000, requestedDate: "2025-01-06"), dataset: dataset)
+            .init(amount: 1_000_000, requestedDate: "2025-01-06", fundIDs: dataset.defaultSelection), dataset: dataset)
         #expect(result.funds[0].valuation == 800_000)
         #expect(result.funds[0].profit == -200_000)
         #expect(result.funds[0].returnPercent == -20)
         #expect(result.funds[1].profit == 0)
         let one = try SimulationCalculator.calculate(
-            .init(amount: 1_000_000, requestedDate: "2026-09-04"), dataset: dataset)
+            .init(amount: 1_000_000, requestedDate: "2026-09-04", fundIDs: dataset.defaultSelection), dataset: dataset)
         #expect(one.funds.allSatisfy { $0.points.count == 1 && $0.profit == 0 })
         #expect(one.displayedDifference == 0)
     }
@@ -59,7 +59,7 @@ struct SimulationTests {
     @Test func roundedDisplayRemainsConsistent() throws {
         let dataset = try Fixtures.validated(Fixtures.snapshot(a: "10000.004000", b: "10000.004900"))
         let result = try SimulationCalculator.calculate(
-            .init(amount: 1_000_000, requestedDate: "2025-01-06"), dataset: dataset)
+            .init(amount: 1_000_000, requestedDate: "2025-01-06", fundIDs: dataset.defaultSelection), dataset: dataset)
         #expect(result.funds[0].valuation != result.funds[1].valuation)
         #expect(result.displayedDifference == 0)
         #expect(result.funds.allSatisfy { $0.displayedProfit == $0.displayedValuation - 1_000_000 })
@@ -134,7 +134,7 @@ struct SimulationTests {
     @Test(arguments: [0, -1, 1_000_000_001]) func invalidAmounts(amount: Int) throws {
         let dataset = try Fixtures.validated()
         #expect(throws: DataIssue.self) {
-            try SimulationCalculator.calculate(.init(amount: amount, requestedDate: "2025-01-06"), dataset: dataset)
+            try SimulationCalculator.calculate(.init(amount: amount, requestedDate: "2025-01-06", fundIDs: dataset.defaultSelection), dataset: dataset)
         }
     }
 
@@ -145,7 +145,7 @@ struct SimulationTests {
         #expect(try MoneyFormat.parseAmount("１，０００，０００") == 1_000_000)
         #expect(try MoneyFormat.parseAmount("1,000,000,000") == 1_000_000_000)
         let result = try SimulationCalculator.calculate(
-            .init(amount: 1_000_000_000, requestedDate: "2025-01-06"), dataset: Fixtures.validated())
+            .init(amount: 1_000_000_000, requestedDate: "2025-01-06", fundIDs: Fixtures.validated().defaultSelection), dataset: Fixtures.validated())
         #expect(result.funds[1].valuation == 1_400_000_000)
     }
 
@@ -164,7 +164,7 @@ struct SimulationTests {
             snapshot.manifest.funds[i].lastDate = snapshot.series[i].observations.last?.date ?? ""
         }
         let result = try SimulationCalculator.calculate(
-            .init(amount: 100, requestedDate: "2025-01-06"), dataset: Fixtures.validated(snapshot))
+            .init(amount: 100, requestedDate: "2025-01-06", fundIDs: Fixtures.validated(snapshot).defaultSelection), dataset: Fixtures.validated(snapshot))
         #expect(result.endDate.rawValue == "2026-09-02")
         #expect(result.funds[0].valuation == 120)
         #expect(result.funds[1].valuation == 140)

@@ -22,7 +22,8 @@ export function day(value) {
 export function validateManifest(m, mode = 'sample', { catalog = true } = {}) {
     assert(['sample', 'live'].includes(mode));
     const isSample = mode === 'sample';
-    assert(isSample ? m.schemaVersion === 1 : [1, 2].includes(m.schemaVersion));
+    // Live data is the fixed-URL format; the sample keeps its versioned files.
+    assert.equal(m.schemaVersion, isSample ? 1 : 2);
     assert.equal(m.isSample, isSample);
     assert.match(m.datasetVersion, /^[a-z0-9][a-z0-9-]{0,63}$/);
     assert.match(m.publishedAt, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);

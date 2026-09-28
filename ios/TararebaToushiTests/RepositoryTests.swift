@@ -58,7 +58,6 @@ import Testing
         #expect(repo.dataset?.snapshot.manifest.datasetVersion == "sample-v2")
         #expect(repo.dataset?.snapshot.series.allSatisfy { $0.datasetVersion == "sample-v2" } == true)
         #expect(await store.value?.snapshot.manifest.datasetVersion == "sample-v2")
-        #expect(repo.origin == .remote)
         #expect(repo.fetchedAt == Date(timeIntervalSince1970: 10_000))
         #expect(await transport.count == Fixtures.requests())
     }
@@ -189,7 +188,7 @@ import Testing
         let defaults = try #require(UserDefaults(suiteName: name))
         defer { defaults.removePersistentDomain(forName: name) }
         defaults.set(
-            Data(#"{"amount":1000000,"requestedDate":"2025-01-06","fundIDs":["live-only"]}"#.utf8),
+            Data(#"{"amount":1000000,"requestedDate":"2025-01-06","fundIDs":["live-only"],"plan":"lumpSum"}"#.utf8),
             forKey: "comparison.input.v1")
         let model = ComparisonModel(defaults: defaults)
         let dataset = try Fixtures.validated()
@@ -200,25 +199,19 @@ import Testing
 
     @Test(arguments: [
         #"{"amount":2000000,"requestedDate":"2025-02-03"}"#,
-        #"{"amount":2000000,"requestedDate":"2025-02-03","fund":"all-country"}"#,
-        #"{"amount":2000000,"requestedDate":"2025-02-03","fund":"sp500"}"#,
+        #"{"amount":2000000,"requestedDate":"2025-02-03","fundIDs":["demo-sp500"]}"#,
+        #"{"amount":"2000000","requestedDate":"2025-02-03","fundIDs":["demo-sp500"],"plan":"lumpSum"}"#,
     ])
-    func legacySavedInputKeepsAmountAndDateAndComparesBothFunds(json: String) throws {
+    func savedInputOfAnotherShapeStartsOverFromTheInitialValues(json: String) throws {
         let name = "tests.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: name))
         defer { defaults.removePersistentDomain(forName: name) }
-        let legacy = Data(json.utf8)
-        defaults.set(legacy, forKey: "comparison.input.v1")
+        defaults.set(Data(json.utf8), forKey: "comparison.input.v1")
 
         let model = ComparisonModel(defaults: defaults)
         #expect(model.plan == .lumpSum)
-        #expect(model.amountText == "2,000,000")
-        #expect(try TradingDay(date: model.selectedDate).rawValue == "2025-02-03")
-        #expect(model.result == nil)
-        model.recalculate(dataset: try Fixtures.validated())
-        #expect(model.result?.input.amount == 2_000_000)
-        #expect(model.result?.requestedDate.rawValue == "2025-02-03")
-        #expect(model.result?.funds.count == 2)
-        #expect(model.result?.funds.allSatisfy { $0.points.first?.amount == 2_000_000 } == true)
+        #expect(model.amountText == "1,000,000")
+        #expect(try TradingDay(date: model.selectedDate).rawValue == AppConfiguration.initialDate)
+        #expect(model.selectedIDs(in: try Fixtures.validated()) == ["demo-all-country", "demo-sp500"])
     }
 }

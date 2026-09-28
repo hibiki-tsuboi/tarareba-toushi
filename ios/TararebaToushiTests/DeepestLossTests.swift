@@ -26,7 +26,7 @@ struct DeepestLossTests {
                 values: ["10000", "9000", "9000", "10000"])
         ])
         let result = try SimulationCalculator.calculate(
-            .init(amount: 1_000_000, requestedDate: "2025-01-06"), dataset: dataset)
+            .init(amount: 1_000_000, requestedDate: "2025-01-06", fundIDs: dataset.defaultSelection), dataset: dataset)
         #expect(result.funds[0].deepestLoss?.day.rawValue == "2025-01-07")
         #expect(result.funds[0].deepestLoss?.displayedAmount == -100_000)
         #expect(result.funds[0].lumpSumDeepestLoss?.day == result.funds[0].deepestLoss?.day)
@@ -41,7 +41,7 @@ struct DeepestLossTests {
         ])
         // 1,000 × 9,999.999 ÷ 10,000 is 999.9999 yen, shown as 1,000 yen.
         let result = try SimulationCalculator.calculate(
-            .init(amount: 1_000, requestedDate: "2025-01-06"), dataset: dataset)
+            .init(amount: 1_000, requestedDate: "2025-01-06", fundIDs: dataset.defaultSelection), dataset: dataset)
         #expect(result.funds[0].points[1].amount < 1_000)
         #expect(result.funds[0].deepestLoss == nil)
     }

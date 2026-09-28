@@ -8,7 +8,8 @@ import Testing
         _ amount: Int, from date: String, in dataset: ValidatedDataset, funds: [String]? = nil
     ) throws -> SimulationResult {
         try SimulationCalculator.calculate(
-            .init(amount: amount, requestedDate: date, fundIDs: funds, plan: .monthly), dataset: dataset)
+            .init(amount: amount, requestedDate: date, fundIDs: funds ?? dataset.defaultSelection, plan: .monthly),
+            dataset: dataset)
     }
 
     private func purchases(from requested: String, in dates: [String]) throws -> [String] {
@@ -118,7 +119,7 @@ import Testing
         #expect(both.funds[0].displayedLumpSumAdvantage == 0)
         // A lump sum has nothing to compare with and is its own lump sum to the last digit.
         let lumpSum = try SimulationCalculator.calculate(
-            .init(amount: 1_000_000, requestedDate: "2025-01-01"), dataset: dataset)
+            .init(amount: 1_000_000, requestedDate: "2025-01-01", fundIDs: dataset.defaultSelection), dataset: dataset)
         #expect(!lumpSum.comparesWithLumpSum)
         #expect(lumpSum.funds.allSatisfy { $0.lumpSumValuation == $0.valuation })
     }

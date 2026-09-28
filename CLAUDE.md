@@ -99,7 +99,7 @@ npm run dev                 # wrangler dev（public/ をローカル配信して
 
 - **形式2（現行の実データ）**: `funds/<id>.json` の固定URLを上書き。商品ごとの `contentVersion` は系列JSONのSHA-256（`fund-<64hex>`）で、対応する履歴の `datasetVersion` と一致します。一覧全体の `datasetVersion` は変更検知用でURLには入りません。内容が変わらなければ版も `publishedAt` も保持します。
 - **形式1（サンプルのみ）**: `funds/<id>.<datasetVersion>.json`。実データの版付きファイルと `public/test.json` は2026-09-07に削除しました（アプリ未公開のため後方互換は不要）。再現性のためサンプルは形式1のまま維持し、同名・異内容の上書きを拒否します。
-- アプリは両形式を読めますが、旧アプリは形式2を読めません。**アプリの更新を先に反映してから配信を切り替えます。**
+- 形式はモードで固定です。実データは形式2だけ、サンプルは形式1だけを受け付けます（アプリも `contract.mjs` も、もう一方を拒否します）。
 - `public/_headers`: 一覧と `live/funds/*` は `max-age=0, must-revalidate`、`sample/funds/*` のみ `immutable`。
 
 ### 取得ロジック（`scripts/fetch-mufg.mjs`）
@@ -116,9 +116,9 @@ npm run dev                 # wrangler dev（public/ をローカル配信して
 - `App/AppConfiguration.swift` — 配信URL・`DatasetMode`（`live` / `sample`）・6時間の更新間隔・金額上限などの設定の集約点。`cacheIdentity`（URL＋モード＋保存形式）が保存ファイル名のハッシュになり、配信元やモードの異なるキャッシュが混ざりません。
 - `Data/FundRepository.swift` — `@MainActor @Observable`。起動時に保存データを読み、6時間経過していれば更新。`transport` / `store` / `now` を注入してテストします。取得失敗時は保存済みスナップショットを保持し、結果画面へは進めません。
 - `Data/RemoteDataSource.swift` — 一覧を取得し、`contentVersion` が変わった商品の履歴だけダウンロード。一覧と履歴が食い違えば一覧から**1回だけ**再取得し、揃わなければ既存を保持します。
-- `Data/LocalSnapshotStore.swift` — Application Support配下に検証済みの単一スナップショットをatomic書き込み。バックアップ対象から除外。`origin == .bundled` の旧開発版キャッシュは採用しません。
+- `Data/LocalSnapshotStore.swift` — Application Support配下に検証済みの単一スナップショットをatomic書き込み。バックアップ対象から除外。
 - `Domain/TradingDay.swift` — グレゴリオ暦・Asia/Tokyo固定の暦日。端末のカレンダー・タイムゾーンに依存しません。
-- `Domain/SimulationCalculator.swift` — 内部はすべて`Decimal`。評価額を1円へ四捨五入してから表示損益・差額を求めます（丸め後の値どうしで計算）。`Double`はグラフ描画時のみ。計算対象は `SimulationInput.fundIDs` の選択商品だけで、結果は配信順（オルカン→S&P500）に並べます。`SimulationInput.plan`（`lumpSum` / `monthly`、未保存の旧入力は一括）で購入日が決まり、`ComparisonDateResolver.purchaseDays` が毎月の購入日を共通観測日から選びます。評価額は直近の購入日から「掛けてから割る」順で繰り越すので、一括投資は従来の `元本 × 値 ÷ 開始値` と同じ結果です。割ってから掛ける形（口数の累積）に変えると、ちょうど0.5円の評価額が丸め誤差で1円ずれます。`FundResult.lumpSumValuation` は同じ元本を開始日に一括で入れた場合の評価額で、開始日より後にも購入した毎月積立の結果にだけ比較カードとして出します（`SimulationResult.comparesWithLumpSum`）。`deepestLoss` / `lumpSumDeepestLoss` は「その日の表示評価額 − その日までの元本」が最小かつ負の日（同額なら早い日、なければnil＝元本割れなし）で、高値からの下落率ではありません。
+- `Domain/SimulationCalculator.swift` — 内部はすべて`Decimal`。評価額を1円へ四捨五入してから表示損益・差額を求めます（丸め後の値どうしで計算）。`Double`はグラフ描画時のみ。計算対象は `SimulationInput.fundIDs` の選択商品だけで、結果は配信順（オルカン→S&P500）に並べます。`SimulationInput.plan`（`lumpSum` / `monthly`）で購入日が決まり、`ComparisonDateResolver.purchaseDays` が毎月の購入日を共通観測日から選びます。評価額は直近の購入日から「掛けてから割る」順で繰り越すので、一括投資は従来の `元本 × 値 ÷ 開始値` と同じ結果です。割ってから掛ける形（口数の累積）に変えると、ちょうど0.5円の評価額が丸め誤差で1円ずれます。`FundResult.lumpSumValuation` は同じ元本を開始日に一括で入れた場合の評価額で、開始日より後にも購入した毎月積立の結果にだけ比較カードとして出します（`SimulationResult.comparesWithLumpSum`）。`deepestLoss` / `lumpSumDeepestLoss` は「その日の表示評価額 − その日までの元本」が最小かつ負の日（同額なら早い日、なければnil＝元本割れなし）で、高値からの下落率ではありません。
 - `Models/Dataset.swift` — `ValidatedDataset.window(for:)` が**選択商品だけの共通観測日**を返します。全商品の積集合は取りません（履歴の短い商品を1つ足しただけで、無関係な商品の比較期間まで縮むため）。同時比較は `AppConfiguration.maximumComparisonFunds`（8商品）まで、既定は先頭2商品。**配信商品数・アプリが出す商品数（20）・同時比較の上限（8）はそれぞれ別**です。選択画面は `FundGroup.grouping` で `category` ごとに見出しを付けます。系列色は選択順の添字で引くので、必要な色数は商品数ではなく上限と同じ8色です。上限を上げるときだけ `AppPalette.seriesColors` を足します。`startRange(for:)` は入力画面で選べる開始日の範囲で、`window(for:)` と同じ境界を全履歴の積集合を作らずに求めます（一致は `StartDateTests` で確認）。選択を変えて範囲外になった開始日は、`ComparisonModel.fitDate` が近い端へ動かして画面に知らせます。
 
 ### iOSのコードの前提
@@ -134,6 +134,7 @@ npm run dev                 # wrangler dev（public/ をローカル配信して
 - **アプリに価格データを同梱しない。** `ios/TararebaToushi/` 配下（`.xcassets` を除く）に `.json` / `.jsonc` / `.csv` があると `npm run validate` と `verify:app` が失敗します。テスト用フィクスチャはテストターゲット内、UIテストの応答はランナーの環境変数（`--ui-testing` + `TARAREBA_TEST_*`）で渡します。
 - **日々の更新はAPIのみ。** CSVを使うのは、保存済み履歴のない商品を設定来CSV（`fund_file/setteirai/<コード>.csv`・Shift_JIS）から1回だけ取り込むときに限ります。取り込み後は最終日と、等間隔に選んだ最大20日を日付指定APIと照合し、1件でも食い違えば書き込みません。既存商品の履歴をCSVで上書きする経路はありません。**再投資基準価額・税引前分配金は書式を検証するだけで保存しません。** 信託報酬の再控除もしません。
 - **既存の日付と値は書き換えない。** 補間・丸め直し・株価指数の接ぎ足しをせず、選択商品の共通観測日だけで計算します。
+- **リリース前なので後方互換は持ちません。** 開発中の古い保存データ・入力値・配信形式を読むための分岐は入れず、端末のアプリは削除して入れ直します。保存形式を変えたら `snapshotStorageVersion` を上げ、入力値は読めなければ初期値から始めます。公開後は、公開済みのアプリが将来の一覧を読めること（前方互換）と、公開後の版が保存したデータを次の版が読めることを守ります。
 - 実データで計算に使う系列は `valueBasis: "nav"`（通常基準価額）だけです。再投資系列（`reinvestedIndex`）はサンプル専用で、実データとして扱ってはいけません。旧版キャッシュ向けの監査済み `reinvestedIndex` 許可と `navWithoutDistributions` は2026-09-28に削除しました。
 - 公開済みアプリとの互換は `docs/data-format.md` の「公開済みのアプリを壊さないために」に従います。アプリの `validateManifest` を厳しくする変更（商品単位で読み飛ばしていたものを一覧全体の拒否にするなど）は、今後の配信の自由を奪うので避けます。
 - 認証情報（`CLOUDFLARE_API_TOKEN` など）をiOSアプリ・`public/`・ソース・チャットに入れないこと。`.dev.vars*` / `.env*` はgitignore済み。

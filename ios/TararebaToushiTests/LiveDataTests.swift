@@ -20,19 +20,17 @@ import Testing
         let snapshot = Fixtures.snapshot(a: "9000", mode: .live)
         let dataset = try DatasetValidator.validate(snapshot, mode: .live)
         let result = try SimulationCalculator.calculate(
-            .init(amount: 1_000_000, requestedDate: "2025-01-06"), dataset: dataset)
+            .init(amount: 1_000_000, requestedDate: "2025-01-06", fundIDs: dataset.defaultSelection), dataset: dataset)
         // A drop in NAV is a drop in holdings value. No assumed distribution is added.
         #expect(result.funds[0].displayedValuation == 900_000)
         #expect(result.funds[0].displayedProfit == -100_000)
         #expect(result.funds[0].returnPercent == -10)
     }
 
-    @Test func unverifiedReinvestedDataCannotBeTreatedAsOrdinaryNAV() {
-        for version in ["live-reinvested", "mufg-20260904-6c4cf880560d"] {
-            var snapshot = Fixtures.snapshot(version: version, mode: .live)
-            snapshot.series[0].valueBasis = "reinvestedIndex"
-            #expect(throws: DataIssue.self) { try DatasetValidator.validate(snapshot, mode: .live) }
-        }
+    @Test func aReinvestedSeriesIsNeverTreatedAsOrdinaryNAV() {
+        var snapshot = Fixtures.snapshot(mode: .live)
+        snapshot.series[0].valueBasis = "reinvestedIndex"
+        #expect(throws: DataIssue.self) { try DatasetValidator.validate(snapshot, mode: .live) }
     }
 
     @Test func defaultUsesLiveAndCacheIdentityIsSeparate() {
@@ -94,7 +92,7 @@ import Testing
         #expect(await store.value?.snapshot == snapshot)
         #expect(repo.fetchedAt != nil)
         let dataset = try #require(repo.dataset)
-        let result = try SimulationCalculator.calculate(.init(amount: 1_000_000, requestedDate: "2025-01-01"), dataset: dataset)
+        let result = try SimulationCalculator.calculate(.init(amount: 1_000_000, requestedDate: "2025-01-01", fundIDs: dataset.defaultSelection), dataset: dataset)
         #expect(!result.isSample)
         #expect(result.funds[0].displayedValuation == 1_200_000)
     }
@@ -102,7 +100,7 @@ import Testing
     @Test func partialFirstDownloadDoesNotLeavePartialCache() async throws {
         let snapshot = Fixtures.snapshot(version: "live-v1", mode: .live)
         var responses = try Fixtures.responses(snapshot)
-        responses.removeValue(forKey: "/live/funds/sp500.live-v1.json")
+        responses.removeValue(forKey: "/live/funds/sp500.json")
         let store = MemoryStore()
         let repo = FundRepository(configuration: AppConfiguration(), transport: MockTransport(responses), store: store)
         await repo.start()
@@ -119,23 +117,6 @@ import Testing
         #expect(repo.dataset?.snapshot == snapshot)
         #expect(repo.message?.contains("404") == true)
         #expect(repo.statusLabel == "取得済みの実データを表示中")
-    }
-
-    @Test func oldBundledCacheMustBeDownloadedAgain() async throws {
-        let snapshot = Fixtures.snapshot(version: "live-v1", mode: .live)
-        var legacy = Fixtures.envelope(snapshot, checkedAt: Date())
-        legacy.origin = .bundled
-        legacy.fetchedAt = nil
-        let store = MemoryStore(legacy)
-        let transport = MockTransport(try Fixtures.responses(snapshot))
-        let repo = FundRepository(configuration: AppConfiguration(), transport: transport, store: store)
-        await repo.start(refresh: false)
-        #expect(repo.dataset == nil)
-        #expect(repo.checkedAt == nil)
-        await repo.refresh()
-        #expect(await transport.count == Fixtures.requests(.live))
-        #expect(await store.value?.origin == .remote)
-        #expect(await store.value?.fetchedAt != nil)
     }
 
     @Test func liveValidationRejectsSyntheticSourceAndInvalidAttribution() {

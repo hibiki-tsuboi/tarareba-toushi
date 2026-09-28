@@ -16,10 +16,9 @@ nonisolated struct SimulationInput: Codable, Sendable {
     // The whole sum for a lump sum; each instalment for a monthly plan.
     var amount: Int
     var requestedDate: String
-    // Absent in snapshots saved before selection existed; nil means the default pair.
-    var fundIDs: [String]? = nil
-    // Absent in inputs saved before monthly plans existed; nil means a lump sum.
-    var plan: InvestmentPlan? = nil
+    var fundIDs: [String]
+    // Required when decoding like every other key; the default only serves callers.
+    var plan: InvestmentPlan = .lumpSum
 }
 
 nonisolated struct ValuationPoint: Identifiable, Sendable {
@@ -72,7 +71,7 @@ nonisolated struct SimulationResult: Sendable {
     // Signed, and only meaningful for exactly two funds: funds[1] - funds[0].
     let displayedDifference: Decimal
 
-    var plan: InvestmentPlan { input.plan ?? .lumpSum }
+    var plan: InvestmentPlan { input.plan }
     var principal: Decimal { Decimal(input.amount) * Decimal(purchaseDays.count) }
     // Instalments that were all bought on the start day are the lump sum already.
     var comparesWithLumpSum: Bool { plan == .monthly && purchaseDays.last != startDate }
@@ -130,11 +129,11 @@ nonisolated enum SimulationCalculator {
         guard (1...AppConfiguration.maximumAmount).contains(input.amount) else {
             throw DataIssue("投資金額は1円〜10億円で入力してください。")
         }
-        let selected = try dataset.funds(for: input.fundIDs ?? dataset.defaultSelection)
+        let selected = try dataset.funds(for: input.fundIDs)
         let requested = try TradingDay(input.requestedDate)
         let dates = try ComparisonDateResolver.dates(for: requested, in: try dataset.window(for: selected))
         guard let start = dates.first, let end = dates.last else { throw DataIssue("比較期間がありません。") }
-        let plan = input.plan ?? .lumpSum
+        let plan = input.plan
         let purchases = ComparisonDateResolver.purchaseDays(for: plan, from: requested, in: dates)
         let instalment = Decimal(input.amount)
         let principal = instalment * Decimal(purchases.count)

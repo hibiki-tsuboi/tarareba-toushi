@@ -47,7 +47,7 @@ async function readPublishedSnapshot(fetcher) {
     const series = [];
     for (const fund of manifest.funds) {
         const history = await download(fund.path);
-        if (manifest.schemaVersion === 2 && history.datasetVersion !== fund.contentVersion) throw new PublicationChanged();
+        if (history.datasetVersion !== fund.contentVersion) throw new PublicationChanged();
         series.push(history);
     }
     return validate({ manifest, series }, 'live', { catalog: false });
@@ -66,11 +66,6 @@ export async function publicationStatus(directory = root, fetcher = fetch) {
         assert(next && next.firstDate === previous.firstDate && next.lastDate >= previous.lastDate,
             '公開中の履歴より短いデータには切り替えられません');
         const oldSeries = published.series.find(s => s.fundId === previous.id);
-        // Already-published legacy URLs remain readable during migration only.
-        if (published.manifest.schemaVersion === 1) {
-            const archive = await read(resolve(directory, 'public/live', previous.path));
-            assert.deepEqual(archive, oldSeries, '移行前の公開JSONが見つかりません');
-        }
         const dates = new Set(local.series.find(s => s.fundId === previous.id).observations.map(o => o.date));
         assert(oldSeries.observations.every(o => dates.has(o.date)), '公開中の履歴から観測日が欠けています');
     }
@@ -81,7 +76,7 @@ export async function verifyPublication(directory = root, fetcher = fetch) {
     const local = await localSnapshot(directory);
     const published = await publishedSnapshot(fetcher);
     assert(published, '公開manifestが見つかりません');
-    assert.deepEqual(published, local, '公開されたmanifest・2履歴が今回のJSONと一致しません');
+    assert.deepEqual(published, local, '公開されたmanifest・履歴が今回のJSONと一致しません');
     return local;
 }
 
@@ -105,7 +100,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
             }
             await report(result.snapshot, result.needsDeploy ? '公開が必要です' : '公開済みJSONと一致しています。公開を省略します');
         } else {
-            await report(await verifyPublication(), '公開されたmanifestと2履歴の一致を確認しました');
+            await report(await verifyPublication(), '公開されたmanifestと全履歴の一致を確認しました');
         }
     } catch (error) {
         console.error(error.message);

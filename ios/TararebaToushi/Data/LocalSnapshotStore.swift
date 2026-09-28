@@ -1,16 +1,10 @@
 import CryptoKit
 import Foundation
 
-nonisolated enum SnapshotOrigin: String, Codable, Sendable {
-    // `bundled` is retained only to identify and ignore caches made by the old development build.
-    case bundled, remote
-}
-
 nonisolated struct StoredSnapshot: Codable, Sendable {
     let identity: String
     var snapshot: DatasetSnapshot
-    var origin: SnapshotOrigin
-    var fetchedAt: Date?
+    var fetchedAt: Date
     var checkedAt: Date?
 }
 
@@ -41,14 +35,12 @@ actor LocalSnapshotStore: SnapshotStore {
         guard size <= AppConfiguration.maximumStoredBytes else { throw DataIssue("保存データが大きすぎます。") }
         let stored = try JSONDecoder().decode(StoredSnapshot.self, from: Data(contentsOf: file))
         guard stored.identity == identity else { throw DataIssue("保存データの配信元が一致しません。") }
-        guard stored.origin == .remote, stored.fetchedAt != nil else { return nil }
         _ = try DatasetValidator.validate(stored.snapshot, mode: mode)
         return stored
     }
 
     func save(_ value: StoredSnapshot) throws {
         guard value.identity == identity else { throw DataIssue("保存先の識別情報が一致しません。") }
-        guard value.origin == .remote, value.fetchedAt != nil else { throw DataIssue("未取得のデータは保存できません。") }
         _ = try DatasetValidator.validate(value.snapshot, mode: mode)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         var folder = directory

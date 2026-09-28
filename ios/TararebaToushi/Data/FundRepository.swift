@@ -7,7 +7,6 @@ final class FundRepository {
     private(set) var isLoading = false
     private(set) var isRefreshing = false
     private(set) var message: String?
-    private(set) var origin: SnapshotOrigin = .remote
     private(set) var fetchedAt: Date?
     private(set) var checkedAt: Date?
     let configuration: AppConfiguration
@@ -65,14 +64,13 @@ final class FundRepository {
         started = true
         isLoading = true
         do {
-            if let cached = try await store.load(), cached.origin == .remote, cached.fetchedAt != nil {
+            if let cached = try await store.load() {
                 let mode = configuration.mode
                 dataset =
                     try await Task.detached {
                         try DatasetValidator.validate(cached.snapshot, mode: mode)
                     }
                     .value
-                origin = cached.origin
                 fetchedAt = cached.fetchedAt
                 checkedAt = cached.checkedAt
             }
@@ -93,15 +91,14 @@ final class FundRepository {
         defer { isRefreshing = false }
         do {
             let candidate = try await remote.updatedDataset(reusing: dataset?.snapshot)
-            let newOrigin: SnapshotOrigin = .remote
-            let newFetchedAt = candidate.snapshot.series == dataset?.snapshot.series ? fetchedAt : now()
+            // Unchanged histories keep the time they were last actually downloaded.
+            let newFetchedAt = (candidate.snapshot.series == dataset?.snapshot.series ? fetchedAt : nil) ?? now()
             let checked = now()
             let envelope = StoredSnapshot(
                 identity: configuration.cacheIdentity, snapshot: candidate.snapshot,
-                origin: newOrigin, fetchedAt: newFetchedAt, checkedAt: checked)
+                fetchedAt: newFetchedAt, checkedAt: checked)
             try await store.save(envelope)
             dataset = candidate
-            origin = newOrigin
             fetchedAt = newFetchedAt
             checkedAt = checked
             message = nil

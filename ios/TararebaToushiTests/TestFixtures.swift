@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 @testable import TararebaToushi
@@ -12,7 +13,8 @@ nonisolated enum Fixtures {
         return mode == .sample ? ids.map { "demo-\($0)" } : ids
     }
 
-    // Final values per fund, in delivered order. Extra funds reuse the last value.
+    // Final values per fund, in delivered order. Extra funds reuse the last value. Live data
+    // uses fixed URLs, identified per fund by its contents; the sample uses versioned files.
     static func snapshot(
         version: String = "sample-v1", a: String = "12000", b: String = "14000", c: String = "13000",
         d: String = "16000", e: String = "15000", f: String = "17000", g: String = "18000",
@@ -25,29 +27,38 @@ nonisolated enum Fixtures {
             "先進国債券",
         ]
         let dates = ["2024-12-30", "2025-01-06", "2026-09-04"]
-        let funds = ids.enumerated()
-            .map { i, id in
-                let name = names[i] + (mode == .sample ? "（サンプル）" : "")
-                return FundDescriptor(
-                    id: id, displayName: name, shortName: name, summary: "テスト用の架空の商品",
-                    currency: "JPY", valueBasis: mode == .sample ? "reinvestedIndex" : "nav",
-                    path: "funds/\(id).\(version).json", firstDate: dates[0], lastDate: dates[2])
-            }
-        let manifest = Manifest(
-            schemaVersion: 1, datasetVersion: version, isSample: mode == .sample,
-            publishedAt: "2026-09-06T00:00:00Z", funds: funds)
+        let isSample = mode == .sample
         let series = ids.enumerated()
             .map { i, id in
-                FundSeries(
-                    schemaVersion: 1, datasetVersion: version, isSample: mode == .sample, fundId: id, currency: "JPY",
-                    valueBasis: mode == .sample ? "reinvestedIndex" : "nav",
+                let observations = zip(dates, ["9900", "10000", finals[i]]).map { FundObservation(date: $0, value: $1) }
+                return FundSeries(
+                    schemaVersion: isSample ? 1 : 2,
+                    datasetVersion: isSample ? version : contentVersion(id, observations), isSample: isSample,
+                    fundId: id, currency: "JPY", valueBasis: isSample ? "reinvestedIndex" : "nav",
                     source: DataSourceDescription(
-                        kind: mode == .sample ? "synthetic" : "official", name: "テスト専用の架空値",
-                        url: mode == .sample ? nil : "https://example.com/fund", note: "実績ではありません"),
-                    observations: zip(dates, ["9900", "10000", finals[i]])
-                        .map { FundObservation(date: $0, value: $1) })
+                        kind: isSample ? "synthetic" : "official", name: "テスト専用の架空値",
+                        url: isSample ? nil : "https://example.com/fund", note: "実績ではありません"),
+                    observations: observations)
             }
+        let funds = ids.enumerated()
+            .map { i, id in
+                let name = names[i] + (isSample ? "（サンプル）" : "")
+                return FundDescriptor(
+                    id: id, displayName: name, shortName: name, summary: "テスト用の架空の商品",
+                    currency: "JPY", valueBasis: series[i].valueBasis,
+                    path: isSample ? "funds/\(id).\(version).json" : "funds/\(id).json",
+                    firstDate: dates[0], lastDate: dates[2], contentVersion: isSample ? nil : series[i].datasetVersion)
+            }
+        let manifest = Manifest(
+            schemaVersion: isSample ? 1 : 2, datasetVersion: version, isSample: isSample,
+            publishedAt: "2026-09-06T00:00:00Z", funds: funds)
         return DatasetSnapshot(manifest: manifest, series: series)
+    }
+
+    // Changes whenever a fund's values do, as the published identifier does.
+    private static func contentVersion(_ id: String, _ observations: [FundObservation]) -> String {
+        let text = ([id] + observations.map { "\($0.date)=\($0.value)" }).joined(separator: "\n")
+        return "fund-" + SHA256.hash(data: Data(text.utf8)).map { String(format: "%02x", $0) }.joined()
     }
 
     static func validated(_ snapshot: DatasetSnapshot = snapshot()) throws -> ValidatedDataset {
@@ -100,8 +111,7 @@ nonisolated enum Fixtures {
     static func envelope(_ snapshot: DatasetSnapshot = snapshot(), checkedAt: Date? = nil) -> StoredSnapshot {
         StoredSnapshot(
             identity: AppConfiguration(mode: snapshot.manifest.isSample ? .sample : .live).cacheIdentity,
-            snapshot: snapshot, origin: .remote,
-            fetchedAt: Date(timeIntervalSince1970: 100), checkedAt: checkedAt)
+            snapshot: snapshot, fetchedAt: Date(timeIntervalSince1970: 100), checkedAt: checkedAt)
     }
 
     static func responses(_ snapshot: DatasetSnapshot) throws -> [String: Data] {

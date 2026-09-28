@@ -6,7 +6,7 @@ GitHub Actionsの [Update fund data](../.github/workflows/update-fund-data.yml) 
 
 ## 更新の流れ
 
-実データの配信形式2は `live/manifest.json` と `live/funds/<商品ID>.json` の固定URLを使います。商品ごとの `contentVersion` で変更を検知します。新アプリは形式1も読み込めるので、アプリの更新を先に反映してから配信を切り替えます。旧アプリは形式2の新しいデータを取得できません。今回の固定URL対応は未デプロイです。
+実データの配信形式2は `live/manifest.json` と `live/funds/<商品ID>.json` の固定URLを使います。商品ごとの `contentVersion` で変更を検知します。実データは形式2だけで、版付きURLの形式1はサンプル専用です。
 
 1. デフォルトブランチの最新コードと過去の配信JSONを取得し、Node.js 24で `npm ci`、`npm test` を実行します。
 2. `npm run fetch:mufg` で2商品の最新値APIを確認し、保存済み最終日の翌日から不足する日付をAPIで順に取得します。CSVは使用せず、既存の過去日は再取得しません。失敗した場合は60秒間隔で最大3回試し、正常なデータを `npm run validate` で検証します。
