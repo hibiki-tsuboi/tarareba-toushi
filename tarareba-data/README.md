@@ -14,7 +14,7 @@ public/live/funds/sp500.json        S&P500の全履歴
 
 どの商品を出すかは一覧が決めます。商品の定義（アプリに出す短い名前・説明・分類を含む）は `scripts/fetch-mufg.mjs` の `funds` にあり、並びがアプリでの並びです。公開済みのアプリを壊さない変更の範囲は [データ形式](../docs/data-format.md) の「公開済みのアプリを壊さないために」を参照してください。
 
-一覧の `funds[].contentVersion` は商品内容から生成した識別子です。各履歴の `datasetVersion` がこれに一致します。一覧の `datasetVersion` は一覧全体の変更確認用であり、URLには入りません。片方の商品だけ変わった場合、もう片方の履歴の内容と識別子は変わりません。変化がなければ一覧の識別子・作成日時も保持します。
+一覧の `funds[].contentVersion` は商品内容から生成した識別子です。各履歴の `datasetVersion` がこれに一致します。一覧の `datasetVersion` は一覧全体の変更確認用であり、URLには入りません。一部の商品だけ変わった場合、ほかの履歴の内容と識別子は変わりません。変化がなければ一覧の識別子・作成日時も保持します。
 
 一覧と固定URLの履歴は `Cache-Control: public, max-age=0, must-revalidate` です。アプリは一覧を確認し、必要な商品で更新情報が変わったものだけ取得します。配信切り替えの途中で一覧と履歴が食い違えば、一覧から1回再確認し、揃わなければ正常な保存データを使い続けます。
 
@@ -39,11 +39,11 @@ npm test
 
 ## 固定URLへの移行（完了）
 
-2026-09-07に通常基準価額（`valueBasis: "nav"`）と商品別固定URL（`schemaVersion: 2`）への移行を完了し、移行スクリプト `migrate:nav` / `migrate:fixed` と公開済みの版付き履歴は削除しました。アプリ未公開のため、版付きURLの後方互換は不要です。実データは `live/funds/<商品ID>.json` の2ファイルだけで、更新のたびに版付きファイルが増えることはありません。
+2026-09-07に通常基準価額（`valueBasis: "nav"`）と商品別固定URL（`schemaVersion: 2`）への移行を完了し、移行スクリプト `migrate:nav` / `migrate:fixed` と公開済みの版付き履歴は削除しました。アプリ未公開のため、版付きURLの後方互換は不要です。実データの履歴は `live/funds/<商品ID>.json` が商品数分（現在14ファイル）あり、更新のたびに版付きファイルが増えることはありません。
 
 ## 日次更新と公開
 
-[Update fund data](../.github/workflows/update-fund-data.yml) は毎朝7:17（日本時間）に取得・検証・Git保存・公開・公開後の照合を行います。変更がなければ公開を省略し、公開に失敗した場合はGit差分がなくても次回に再試行します。有効化にはGitHubへの反映とCloudflareのActions secretsが必要です。[日次更新の手順](../docs/data-updates.md)
+[Update fund data](../.github/workflows/update-fund-data.yml) は毎朝7:17（日本時間）に全14商品の取得・検証・Git保存・公開・公開後の照合を行います。変更がなければ公開を省略し、公開に失敗した場合はGit差分がなくても次回に再試行します。公開を省略した日も全履歴を照合します。手動実行の `force_deploy` は、データに変更がない日の認証・公開処理の確認用です。有効化にはGitHubへの反映とCloudflareのActions secretsが必要です。[日次更新の手順](../docs/data-updates.md)
 
 手動公開は日次ジョブと同時に実行せず、検証したJSONをGitへコミット・pushしてから行います。
 

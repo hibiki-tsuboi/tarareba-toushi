@@ -2,17 +2,17 @@
 
 GitHub Actionsの [Update fund data](../.github/workflows/update-fund-data.yml) が、毎日 **7:17（日本時間、UTC 22:17）** に実行する設定です。手動の **Run workflow** にも対応しています。
 
-2026-09-06時点ではローカル実装・テストまで完了しています。`CLOUDFLARE_ACCOUNT_ID` は対象リポジトリに登録済みです。GitHubへのコード反映と `CLOUDFLARE_API_TOKEN` の登録が完了するまでは自動公開は稼働しません。
+対象は全14商品です。自動公開には `CLOUDFLARE_ACCOUNT_ID` と `CLOUDFLARE_API_TOKEN` のActions secretsが必要です。ローカルでのデプロイに使う対話式ログインとは別に設定します。
 
 ## 更新の流れ
 
 実データの配信形式2は `live/manifest.json` と `live/funds/<商品ID>.json` の固定URLを使います。商品ごとの `contentVersion` で変更を検知します。実データは形式2だけで、版付きURLの形式1はサンプル専用です。
 
 1. デフォルトブランチの最新コードと過去の配信JSONを取得し、Node.js 24で `npm ci`、`npm test` を実行します。
-2. `npm run fetch:mufg` で2商品の最新値APIを確認し、保存済み最終日の翌日から不足する日付をAPIで順に取得します。CSVは使用せず、既存の過去日は再取得しません。失敗した場合は60秒間隔で最大3回試し、正常なデータを `npm run validate` で検証します。
-3. `npm run publish:status` で公開中のmanifest・2履歴と比較します。同じ版なら内容まで一致することを確認し、公開を省略します。
+2. `npm run fetch:mufg` で全商品の最新値APIを確認し、保存済み最終日の翌日から不足する日付をAPIで順に取得します。CSVは使用せず、既存の過去日は再取得しません。失敗した場合は60秒間隔で最大3回試し、正常なデータを `npm run validate` で検証します。
+3. `npm run publish:status` で公開中のmanifest・全履歴と比較します。同じ版なら内容まで一致することを確認し、公開を省略します。手動実行で `force_deploy` にチェックを入れた場合は、変更がなくても公開します。
 4. 更新した固定URLの履歴と一覧を `public/live/` からGitへコミット・pushしてから、必要な場合だけ `npm run deploy` を実行します。商品ごとの履歴を上書きするため、日々の版付きファイルは増えません。
-5. `npm run publish:verify` で公開されたmanifest・2履歴の内容とJSONの形式を確認します。反映待ちを考慮し、15秒間隔で最大5回確認します。
+5. 公開を省略した日も `npm run publish:verify` で公開されたmanifest・全履歴の内容とJSONの形式を確認します。反映待ちを考慮し、15秒間隔で最大5回確認します。
 
 休日も実行しますが、元データに変化がなければ識別子や作成日時を変更しません。アプリは引き続き同じ `live/manifest.json` を参照します。
 
@@ -20,7 +20,7 @@ GitHub Actionsの [Update fund data](../.github/workflows/update-fund-data.yml) 
 
 対象リポジトリは `hibiki-tsuboi/tarareba-toushi` です。現在のデフォルトブランチは `main` です。
 
-1. Cloudflareで **Edit Cloudflare Workers** テンプレートからAPIトークンを作成し、配信に使うアカウントへ範囲を限定します。ローカルの `wrangler login` で得た認証はGitHub Actionsには引き継がれません。
+1. Cloudflareの **アカウント API トークン** で、対象を **指定された Workers → tarareba-data**、権限を **Individual Workers → Editor** にしたトークンを作成します。この権限で既存Workerの更新・公開ができます。ローカルの `wrangler login` で得た認証はGitHub Actionsには引き継がれません。[CloudflareのWorker別権限](https://developers.cloudflare.com/workers/authorization/workers/)
 2. [リポジトリのActions secrets](https://github.com/hibiki-tsuboi/tarareba-toushi/settings/secrets/actions) に次の2つを登録します。トークンの値はソースコードやチャットに貼り付けないでください。
 
 | 名前 | 値 |
@@ -29,8 +29,8 @@ GitHub Actionsの [Update fund data](../.github/workflows/update-fund-data.yml) 
 | `CLOUDFLARE_API_TOKEN` | 作成したデプロイ用APIトークン |
 
 3. ワークフローと現在のアプリ・配信スクリプトをデフォルトブランチに反映します。ワークフローだけを古いコードへ追加しないでください。
-4. [Actions](https://github.com/hibiki-tsuboi/tarareba-toushi/actions) → **Update fund data** → **Run workflow** を実行し、成功と実行サマリーの版・基準日を確認します。
-5. [GitHubの通知設定](https://github.com/settings/notifications) でActionsの失敗通知を有効にし、以後の更新結果を確認します。
+4. [Update fund data](https://github.com/hibiki-tsuboi/tarareba-toushi/actions/workflows/update-fund-data.yml) → **Run workflow** で `force_deploy` にチェックを入れて実行します。初回やトークン交換時は、変更のない日でもCloudflareへの公開が成功することを確認してください。実行サマリーに版と全商品の基準日が出ます。
+5. [GitHubの通知設定](https://github.com/settings/notifications) の **System → Actions** でメール通知と **Only notify for failed workflows** を有効にし、以後の失敗を確認します。定期実行の通知先はワークフローの作成者やcron設定を最後に変更したユーザーになるため、運用担当者のアカウントで確認してください。[GitHubの実行通知の仕様](https://docs.github.com/en/actions/concepts/workflows-and-actions/notifications-for-workflow-runs)
 
 ワークフロー内で `contents: write` を指定し、生成データをGitHubの標準 `GITHUB_TOKEN` で保存します。ブランチ保護で直接pushが禁止されている場合は、自動保存に適したブランチ運用を別途決めてください。保護設定の迂回やforce pushは行いません。
 
