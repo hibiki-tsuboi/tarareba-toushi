@@ -1,8 +1,22 @@
 # 配信データの日次更新
 
-GitHub Actionsの [Update fund data](../.github/workflows/update-fund-data.yml) が、毎日 **7:17（日本時間、UTC 22:17）** に実行する設定です。手動の **Run workflow** にも対応しています。
+GitHub Actionsの [Update fund data](../.github/workflows/update-fund-data.yml) で取得・検証・公開します。2026-10-03の実行では公式APIからHTTP 403が返ったため、日次スケジュールは停止中です。接続条件を確認してから、毎日 **7:17（日本時間、UTC 22:17）** のcronを有効にします。手動の **Run workflow** は利用できます。
 
-対象は全14商品です。自動公開には `CLOUDFLARE_ACCOUNT_ID` と `CLOUDFLARE_API_TOKEN` のActions secretsが必要です。ローカルでのデプロイに使う対話式ログインとは別に設定します。
+対象は全14商品です。`CLOUDFLARE_ACCOUNT_ID` と `CLOUDFLARE_API_TOKEN` のActions secretsは登録済みです。ローカルでのデプロイに使う対話式ログインとは別の、`tarareba-data` 専用トークンを使います。
+
+## 公式APIの接続確認待ち
+
+[2026-10-03の実行](https://github.com/hibiki-tsuboi/tarareba-toushi/actions/runs/37113197285) は認証情報の確認と35テストを通過し、最初の公式API要求でHTTP 403となりました。60秒間隔の3回すべてで同じ応答だったため、データ保存・Cloudflare公開には進んでいません。原因がIP制限・地域制限などのどれに当たるかは未確認です。
+
+提供元へ確認する場合の情報:
+
+- 実行元: GitHub ActionsのGitHub-hosted `ubuntu-latest`、Node.js 24
+- 発生日時: 2026-10-03 18:29:18 / 18:30:18 / 18:31:18（日本時間）
+- 要求: `GET https://developer.am.mufg.jp/fund_information_latest/association_fund_cd/0331418A`
+- 応答: HTTP 403。同日の手元環境では同じURLがHTTP 200。
+- 確認事項: GitHub Actionsからの投信情報API利用に必要な接続条件・利用申請・許可設定の有無。
+
+接続条件が確認できたら、**Run workflow** で取得・公開・公開後の照合が成功することを確かめ、ワークフロー冒頭の `schedule` を有効にしてデフォルトブランチへ反映してください。
 
 ## 更新の流れ
 
@@ -33,6 +47,8 @@ GitHub Actionsの [Update fund data](../.github/workflows/update-fund-data.yml) 
 5. [GitHubの通知設定](https://github.com/settings/notifications) の **System → Actions** でメール通知と **Only notify for failed workflows** を有効にし、以後の失敗を確認します。定期実行の通知先はワークフローの作成者やcron設定を最後に変更したユーザーになるため、運用担当者のアカウントで確認してください。[GitHubの実行通知の仕様](https://docs.github.com/en/actions/concepts/workflows-and-actions/notifications-for-workflow-runs)
 
 ワークフロー内で `contents: write` を指定し、生成データをGitHubの標準 `GITHUB_TOKEN` で保存します。ブランチ保護で直接pushが禁止されている場合は、自動保存に適したブランチ運用を別途決めてください。保護設定の迂回やforce pushは行いません。
+
+Wranglerは4.147.0へ更新し、Worker限定トークンと `CI=true` を使う非対話デプロイが成功することを確認しました。4.129.0では公開URLを表示するためのアカウント全体のsubdomain参照で認証エラーになったため、Worker単位の参照に対応した4.136.1以降が必要です。[公式修正](https://github.com/cloudflare/workers-sdk/releases/tag/wrangler%404.136.1)
 
 [Cloudflare公式のGitHub Actions設定](https://developers.cloudflare.com/workers/ci-cd/external-cicd/github-actions/)に認証の詳細があります。
 

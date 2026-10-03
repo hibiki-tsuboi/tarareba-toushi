@@ -43,7 +43,9 @@ npm test
 
 ## 日次更新と公開
 
-[Update fund data](../.github/workflows/update-fund-data.yml) は毎朝7:17（日本時間）に全14商品の取得・検証・Git保存・公開・公開後の照合を行います。変更がなければ公開を省略し、公開に失敗した場合はGit差分がなくても次回に再試行します。公開を省略した日も全履歴を照合します。手動実行の `force_deploy` は、データに変更がない日の認証・公開処理の確認用です。有効化にはGitHubへの反映とCloudflareのActions secretsが必要です。[日次更新の手順](../docs/data-updates.md)
+[Update fund data](../.github/workflows/update-fund-data.yml) は全14商品の取得・検証・Git保存・公開・公開後の照合を行います。Actions secretsは登録済みですが、GitHub Actionsから公式APIへの要求がHTTP 403となったため、毎朝7:17（日本時間）の定期実行は停止中です。接続条件の確認後に再開します。[停止理由と再開手順](../docs/data-updates.md)
+
+変更がなければ公開を省略し、公開に失敗した場合はGit差分がなくても次回に再試行します。公開を省略した日も全履歴を照合します。手動実行の `force_deploy` は、データに変更がない日の認証・公開処理の確認用です。Worker限定トークンに対応したWrangler 4.147.0で公開を確認済みです。
 
 手動公開は日次ジョブと同時に実行せず、検証したJSONをGitへコミット・pushしてから行います。
 

@@ -1,6 +1,6 @@
 # 実装・検証メモ
 
-## 日次更新の再開準備
+## 日次更新の再開検証（公式APIの接続確認待ち）
 
 2026-10-03に、日次更新が停止していた原因を確認しました。GitHub Actions secretsには `CLOUDFLARE_ACCOUNT_ID` だけが登録され、`CLOUDFLARE_API_TOKEN` が未登録だったため、過去の定期実行は認証情報の確認で失敗していました。その後、スケジュールが無効化されていました。
 
@@ -8,7 +8,13 @@
 
 Node.jsの35テスト、`npm run validate`、actionlint 1.7.12、YAML構文検証、`git diff --check` が成功しました。`npm run publish:verify` でも公開中の一覧と全14商品の履歴が保存済みの `mufg-20261002-891f0e81accd` と完全一致しました。GitHubの通知画面では、Actionsのメール通知が **Failed workflows only** で有効になっていることを確認しました。実際の失敗メールの受信は未確認です。
 
-CloudflareのアカウントAPIトークン作成画面で、`tarareba-data` だけを対象にした **Individual Workers Editor** 権限の設定を準備しました。トークンの発行・Actions secretへの保存、変更のpush、GitHub上での通し実行はまだ完了していません。
+承認を受け、`tarareba-data` だけを対象にした **Individual Workers Editor** 権限のアカウントAPIトークン（期限なし）を発行し、Actions secret `CLOUDFLARE_API_TOKEN` に保存しました。値はソースコードや実行ログに含めていません。
+
+コミット `bd35614` をpushし、[GitHub Actionsの初回実行](https://github.com/hibiki-tsuboi/tarareba-toushi/actions/runs/37113197285) を `force_deploy=true` で開始しました。認証情報の確認と35テストは成功しましたが、最初の公式API要求が3回ともHTTP 403となり、データ保存・公開へ進まず停止しました。同じURLは手元の環境でHTTP 200でした。接続条件の確認が必要なため、日次スケジュールを再び停止し、発生日時・URL・再開手順を [日次更新](data-updates.md) に記録しました。GitHub上での取得から公開までの通し成功は未確認です。
+
+Cloudflare認証は独立して検証しました。Wrangler 4.129.0はWorkerのアップロード後、公開URL表示用のアカウント全体のsubdomain参照で認証エラーになりました。この参照をWorker単位に修正した公式リリースを確認し、Wranglerを4.147.0へ更新しました。登録したものと同じ限定トークン・アカウントID・`CI=true` を指定した `npm run deploy` は正常終了し、Workerの版は `b83fc15f-6c7a-49c5-97b0-4bbbd8693faa` です。権限の追加はしていません。
+
+公開後の `npm run publish:verify` で一覧と全14履歴の完全一致を確認しました。データの版・最終日は変わっていません。最終構成でも35テスト・データ検証・actionlintが成功し、依存関係の監査は0件でした。トークンの受け渡しに使った一時ファイルは削除済みです。
 
 ## 8資産バランス・国内REIT・国内債券・インド株の追加
 

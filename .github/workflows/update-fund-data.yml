@@ -1,9 +1,11 @@
 name: Update fund data
 
 on:
-  schedule:
-    # 07:17 JST every day. Fixed files are unchanged when the source is unchanged.
-    - cron: '17 22 * * *'
+  # Paused: the official MUFG API returned HTTP 403 from GitHub-hosted runners
+  # on 2026-10-03. Confirm permitted access with the provider before resuming.
+  # schedule:
+  #   # 07:17 JST every day. Fixed files are unchanged when the source is unchanged.
+  #   - cron: '17 22 * * *'
   workflow_dispatch:
     inputs:
       force_deploy:
@@ -107,6 +109,7 @@ jobs:
           失敗したステップを確認し、問題を解消してから **Run workflow** を実行してください。
           取得・検証・Gitへの保存に失敗した場合は、公開処理へ進みません。
           公開に失敗した場合も、次回は実際の公開版と比較して再試行します。
+          公式APIのHTTP 403はCloudflareの認証とは別の問題です。提供元に接続条件を確認してください（`docs/data-updates.md`）。
           認証エラーの場合はActions secretsの `CLOUDFLARE_API_TOKEN` と `CLOUDFLARE_ACCOUNT_ID` を確認してください。
           トークンを更新した後は、**Run workflow** の `force_deploy` にチェックを入れると、データに変更がない日も公開処理を確認できます。
           EOF
