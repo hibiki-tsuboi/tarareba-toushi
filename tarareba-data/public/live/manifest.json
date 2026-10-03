@@ -1,8 +1,8 @@
 {
   "schemaVersion": 2,
-  "datasetVersion": "mufg-20260907-bb348f3036a7",
+  "datasetVersion": "mufg-20261002-891f0e81accd",
   "isSample": false,
-  "publishedAt": "2026-09-28T05:22:04Z",
+  "publishedAt": "2026-10-03T09:10:08Z",
   "funds": [
     {
       "id": "all-country",
@@ -13,9 +13,9 @@
       "currency": "JPY",
       "valueBasis": "nav",
       "path": "funds/all-country.json",
-      "contentVersion": "fund-7bd6b7dadf1a8d23f852d2eea31963249b8f2119ebdc4d6f150ce5c1fa7c31b1",
+      "contentVersion": "fund-db50264c0ea8be7e3cee489e52f79cf5e07a2fdb17aed3170dc52d03bffde44f",
       "firstDate": "2018-10-31",
-      "lastDate": "2026-09-07"
+      "lastDate": "2026-10-02"
     },
     {
       "id": "sp500",
@@ -26,9 +26,9 @@
       "currency": "JPY",
       "valueBasis": "nav",
       "path": "funds/sp500.json",
-      "contentVersion": "fund-490e6d12f105d383234107913777f6dcfaa5f4b63110696b9684bada55af40ad",
+      "contentVersion": "fund-890680d5675d194ebaf351330dbef7ce1d9fbb4d4137cacbe5e24b8f50d8be30",
       "firstDate": "2018-07-03",
-      "lastDate": "2026-09-07"
+      "lastDate": "2026-10-02"
     },
     {
       "id": "topix",
@@ -39,9 +39,9 @@
       "currency": "JPY",
       "valueBasis": "nav",
       "path": "funds/topix.json",
-      "contentVersion": "fund-6902515358168781a9ce2006d3e34d69f38d5e50556764995785e1ba3c04b8ff",
+      "contentVersion": "fund-291cd16ccd1242faeaef5781e3531e8fd7d59c533b2c9ba1ae9890a1ed186125",
       "firstDate": "2017-02-27",
-      "lastDate": "2026-09-07"
+      "lastDate": "2026-10-02"
     },
     {
       "id": "nasdaq100",
@@ -52,9 +52,9 @@
       "currency": "JPY",
       "valueBasis": "nav",
       "path": "funds/nasdaq100.json",
-      "contentVersion": "fund-148c06a057220a44a3540be234ed2c7c806173e52022d9f2d8c3c54ae52d2c86",
+      "contentVersion": "fund-3bfc9f5df2897f242239103c99723953319fe77ab1ba9efea356a03be90d3a2f",
       "firstDate": "2021-01-29",
-      "lastDate": "2026-09-07"
+      "lastDate": "2026-10-02"
     },
     {
       "id": "nikkei225",
@@ -65,9 +65,9 @@
       "currency": "JPY",
       "valueBasis": "nav",
       "path": "funds/nikkei225.json",
-      "contentVersion": "fund-0d4849d2d0a6e8587a915259f67285542ddfc2ce0970c6304e95a1e9306636f8",
+      "contentVersion": "fund-4304a8344baa6dcadb1232d95f35fe19b7a07d3715cec73ea9ecc128e0e3e18a",
       "firstDate": "2018-02-02",
-      "lastDate": "2026-09-07"
+      "lastDate": "2026-10-02"
     },
     {
       "id": "emerging",
@@ -78,9 +78,22 @@
       "currency": "JPY",
       "valueBasis": "nav",
       "path": "funds/emerging.json",
-      "contentVersion": "fund-51f45f3baa0ba04374e33af5ba99ed4d3e355736328e26c6d9f41272711fe949",
+      "contentVersion": "fund-729b58c4edd8aa9a2cdcbf923a51ff4f12e37488debb99f649efa4e96aa1fa4d",
       "firstDate": "2017-07-31",
-      "lastDate": "2026-09-07"
+      "lastDate": "2026-10-02"
+    },
+    {
+      "id": "india",
+      "displayName": "ｅＭＡＸＩＳ インド株式インデックス",
+      "shortName": "インド株",
+      "summary": "インドの株式",
+      "category": "株式",
+      "currency": "JPY",
+      "valueBasis": "nav",
+      "path": "funds/india.json",
+      "contentVersion": "fund-ff9be9bd5023b05b97157fb3d7efbb07c8b3c71a6a9a6e6a732c8d80f1b7ba95",
+      "firstDate": "2024-02-22",
+      "lastDate": "2026-10-02"
     },
     {
       "id": "nanotech",
@@ -91,9 +104,9 @@
       "currency": "JPY",
       "valueBasis": "nav",
       "path": "funds/nanotech.json",
-      "contentVersion": "fund-1e24e9205ce949128cc4c0df1f91a66010608d2d748ea0b3842595194a186031",
+      "contentVersion": "fund-396c6ff842c8ffeb8239176dd897eb68b7bbab803fa29f8d8d70bf54c7769ce3",
       "firstDate": "2018-12-03",
-      "lastDate": "2026-09-07"
+      "lastDate": "2026-10-02"
     },
     {
       "id": "genomics",
@@ -104,9 +117,22 @@
       "currency": "JPY",
       "valueBasis": "nav",
       "path": "funds/genomics.json",
-      "contentVersion": "fund-19990ff67b787a6ef6493fc7d5456708b995af53539a2217b97debe704fef096",
+      "contentVersion": "fund-79641c738599059bf8b26ca020c14c1b2be6f2ddcc9235eb7b5f76b6940273d3",
       "firstDate": "2018-08-06",
-      "lastDate": "2026-09-07"
+      "lastDate": "2026-10-02"
+    },
+    {
+      "id": "domestic-bond",
+      "displayName": "ｅＭＡＸＩＳ Ｓｌｉｍ 国内債券インデックス",
+      "shortName": "国内債券",
+      "summary": "日本の国債・社債などの債券",
+      "category": "債券",
+      "currency": "JPY",
+      "valueBasis": "nav",
+      "path": "funds/domestic-bond.json",
+      "contentVersion": "fund-2affbdb678bbee81c2a4b1d8dac2b3db702c534da65f1481a3cb5e0d56463825",
+      "firstDate": "2017-02-27",
+      "lastDate": "2026-10-02"
     },
     {
       "id": "developed-bond",
@@ -117,9 +143,35 @@
       "currency": "JPY",
       "valueBasis": "nav",
       "path": "funds/developed-bond.json",
-      "contentVersion": "fund-68a76cc6e3ad39e4687d4222b1ee1358f363d97b81d97f1a4f26a6d11ffe261c",
+      "contentVersion": "fund-3549832c7913433480030784aa574adb279d6ca515ca1cfb43afedde34134f07",
       "firstDate": "2017-02-27",
-      "lastDate": "2026-09-07"
+      "lastDate": "2026-10-02"
+    },
+    {
+      "id": "domestic-reit",
+      "displayName": "ｅＭＡＸＩＳ Ｓｌｉｍ 国内リートインデックス",
+      "shortName": "国内REIT",
+      "summary": "日本の不動産投資信託（リート）",
+      "category": "REIT",
+      "currency": "JPY",
+      "valueBasis": "nav",
+      "path": "funds/domestic-reit.json",
+      "contentVersion": "fund-d853aa134f932e64267a36f5776c8a9f4de089622fbffa267b8f49189ad9d794",
+      "firstDate": "2019-10-31",
+      "lastDate": "2026-10-02"
+    },
+    {
+      "id": "balanced-eight",
+      "displayName": "ｅＭＡＸＩＳ Ｓｌｉｍ バランス（８資産均等型）",
+      "shortName": "8資産バランス",
+      "summary": "国内外の株式・債券・リートの8資産に均等投資",
+      "category": "バランス",
+      "currency": "JPY",
+      "valueBasis": "nav",
+      "path": "funds/balanced-eight.json",
+      "contentVersion": "fund-bb7c52f82c9fd12f6b51d172b68baa6e3bf7353a3b28779d8b81e3286726c0c1",
+      "firstDate": "2017-05-09",
+      "lastDate": "2026-10-02"
     },
     {
       "id": "gold",
@@ -130,9 +182,9 @@
       "currency": "JPY",
       "valueBasis": "nav",
       "path": "funds/gold.json",
-      "contentVersion": "fund-9bf29031e5cd0b741cc851cb4ee17d281f17bcc3b7cc814f67278f6e586067f3",
+      "contentVersion": "fund-515d99ab36d5d25fb6a49a1c2e6458fc9ab07cc50f26dbcde6ad50e44ee2bcab",
       "firstDate": "2011-02-07",
-      "lastDate": "2026-09-07"
+      "lastDate": "2026-10-02"
     }
   ],
   "notices": [
